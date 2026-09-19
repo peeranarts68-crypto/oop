@@ -23,17 +23,318 @@ function updateClock() {
     if (homeClock) homeClock.textContent = timeStr;
 }
 
-// Fetch Full Phone State from Java Localhost Backend
+// Standalone Cloud / Offline Mode Simulation Support (e.g. Vercel)
+let isOfflineMode = false;
+let clientSimState = null;
+
+const SIM_DEFAULT_USERS = [
+    {
+        studentId: "6812247050",
+        fullName: "พีรนาท สิงห์โต",
+        faculty: "คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม",
+        instagram: "@s.peeranart",
+        profileImage: "uploads/profile_user_1789807298340_a924f1.jpg",
+        password: "123456",
+        registeredAt: 1789807209333
+    }
+];
+
+let simUsers = (() => {
+    try {
+        const stored = localStorage.getItem("psru_sim_users");
+        return stored ? JSON.parse(stored) : SIM_DEFAULT_USERS;
+    } catch(e) {
+        return SIM_DEFAULT_USERS;
+    }
+})();
+
+function saveSimUsers() {
+    try {
+        localStorage.setItem("psru_sim_users", JSON.stringify(simUsers));
+    } catch(e) {}
+}
+
+const SIM_SAMPLE_POSTS = [
+    {
+        id: "ITEM-101",
+        type: "LOST",
+        title: "iPad Air 5 สีฟ้า (เคสสีดำ)",
+        category: "อุปกรณ์อิเล็กทรอนิกส์ (มือถือ, iPad, โน้ตบุ๊ก, หูฟัง)",
+        location: "ห้องสมุดกลาง ชั้น 2 (โซนอ่านหนังสือเงียบ)",
+        description: "ลืมไว้ที่โต๊ะอ่านหนังสือช่วงเวลา 13:00 น. มีสติกเกอร์รูปแมวติดหลังเคส",
+        photoUrl: "",
+        reporterId: "6812247050",
+        reporterName: "พีรนาท สิงห์โต",
+        reporterFaculty: "คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม",
+        reporterIg: "@s.peeranart",
+        status: "OPEN",
+        createdAt: Date.now() - 7200000
+    },
+    {
+        id: "ITEM-102",
+        type: "FOUND",
+        title: "บัตรนักศึกษา และ บัตรประชาชน",
+        category: "บัตร / เอกสารสำคัญ / บัตรนักศึกษา",
+        location: "โรงอาหารกลาง ชั้น 1 ใกล้ร้านข้าวมันไก่",
+        description: "เก็บตกอยู่บนโต๊ะอาหาร ติดต่อขอรับคืนได้ทาง IG เลยครับ",
+        photoUrl: "",
+        reporterId: "6812345678",
+        reporterName: "สมชาย ใจดี",
+        reporterFaculty: "คณะวิทยาการจัดการ",
+        reporterIg: "@somchai_psru",
+        status: "OPEN",
+        createdAt: Date.now() - 18000000
+    }
+];
+
+let simPosts = (() => {
+    try {
+        const stored = localStorage.getItem("psru_sim_posts");
+        return stored ? JSON.parse(stored) : SIM_SAMPLE_POSTS;
+    } catch(e) {
+        return SIM_SAMPLE_POSTS;
+    }
+})();
+
+function saveSimPosts() {
+    try {
+        localStorage.setItem("psru_sim_posts", JSON.stringify(simPosts));
+    } catch(e) {}
+}
+
+function showCloudIndicator() {
+    if (document.getElementById("cloudSimBadge")) return;
+    const controls = document.querySelector(".floating-controls");
+    if (controls) {
+        const badge = document.createElement("div");
+        badge.id = "cloudSimBadge";
+        badge.className = "cloud-sim-badge";
+        badge.innerHTML = "☁️ Cloud Standalone Mode";
+        badge.title = "กำลังทำงานในโหมด Standalone บน Cloud (หากเปิดพร้อม Java Server บน localhost:8088 จะเชื่อมต่อ Real JVM Backend อัตโนมัติ)";
+        controls.prepend(badge);
+    }
+}
+
+function hideCloudIndicator() {
+    const badge = document.getElementById("cloudSimBadge");
+    if (badge) badge.remove();
+}
+
+function enableClientSimulation() {
+    isOfflineMode = true;
+    const currentUser = simUsers[0];
+
+    clientSimState = {
+        device: {
+            brand: "Google / PSRU Edition",
+            model: "Pixel 9 Pro (Simulated)",
+            serialNumber: "SN-6812247050",
+            deviceType: "SMARTPHONE",
+            isPoweredOn: true,
+            volume: 80
+        },
+        battery: {
+            level: 100,
+            capacityMah: 5000,
+            isCharging: true,
+            temperatureCelsius: 26,
+            isCritical: false,
+            isInfinite: true
+        },
+        display: {
+            resolution: "1080x2400 FHD+",
+            diagonalInches: 6.7,
+            brightness: 85,
+            isScreenOn: true,
+            refreshRateHz: 120
+        },
+        storage: {
+            totalMb: 128000,
+            usedMb: 14500,
+            freeMb: 113500,
+            usedPercent: 11,
+            files: [
+                { fileName: "system.img", sizeMb: 8500, fileType: "SYSTEM", createdAt: Date.now() - 86400000 },
+                { fileName: "profile_6812247050.jpg", sizeMb: 2, fileType: "image/jpeg", createdAt: Date.now() - 3600000 },
+                { fileName: "users.dat", sizeMb: 1, fileType: "DATA", createdAt: Date.now() - 7200000 }
+            ]
+        },
+        network: {
+            connectionType: "Wi-Fi 6 (PSRU-Campus-5G)",
+            signalStrength: 98,
+            isOnline: true
+        },
+        notifications: [
+            {
+                title: "ยินดีต้อนรับสู่ PSRU Lost & Found",
+                message: "ระบบจำลองสมาร์ตโฟนเชื่อมต่อพร้อมใช้งานบน Cloud",
+                appSource: "PSRU Portal",
+                timestamp: Date.now()
+            }
+        ],
+        runningApp: {
+            appId: "com.psru.lostfound",
+            appName: "PSRU Lost & Found",
+            state: "RESUMED",
+            appData: {
+                isLoggedIn: true,
+                currentUser: currentUser,
+                posts: simPosts
+            }
+        }
+    };
+
+    currentPhoneState = clientSimState;
+    renderPhoneUI(clientSimState);
+    renderInspector(clientSimState);
+    showCloudIndicator();
+}
+
+function executeSimAction(action, params) {
+    if (!clientSimState) {
+        enableClientSimulation();
+    }
+    if (!clientSimState.runningApp) {
+        clientSimState.runningApp = {
+            appId: "com.psru.lostfound",
+            appName: "PSRU Lost & Found",
+            state: "RESUMED",
+            appData: { isLoggedIn: true, currentUser: simUsers[0], posts: simPosts }
+        };
+    }
+    const appData = clientSimState.runningApp.appData;
+
+    switch (action) {
+        case "LOGIN": {
+            const sid = String(params.studentId || "").trim();
+            const pwd = String(params.password || "").trim();
+            const found = simUsers.find(u => u.studentId === sid && u.password === pwd);
+            if (!found) {
+                return { success: false, message: "รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง" };
+            }
+            appData.isLoggedIn = true;
+            appData.currentUser = found;
+            return { success: true, message: "เข้าสู่ระบบสำเร็จ", data: { user: found } };
+        }
+        case "REGISTER": {
+            const sid = String(params.studentId || "").trim();
+            const exists = simUsers.some(u => u.studentId === sid);
+            if (exists) {
+                return { success: false, message: "รหัสนักศึกษานี้ลงทะเบียนไว้แล้ว" };
+            }
+            const newUser = {
+                studentId: sid,
+                fullName: params.fullName || "",
+                faculty: params.faculty || "",
+                instagram: params.instagram || "",
+                profileImage: params.profileImage || "",
+                password: params.password || "",
+                registeredAt: Date.now()
+            };
+            simUsers.push(newUser);
+            saveSimUsers();
+            appData.isLoggedIn = true;
+            appData.currentUser = newUser;
+            return { success: true, message: "ลงทะเบียนสำเร็จ", data: { user: newUser } };
+        }
+        case "LOGOUT": {
+            appData.isLoggedIn = false;
+            appData.currentUser = null;
+            return { success: true, message: "ออกจากระบบแล้ว" };
+        }
+        case "CREATE_POST": {
+            const user = appData.currentUser || simUsers[0];
+            const newPost = {
+                id: "ITEM-" + Date.now().toString().slice(-4),
+                type: params.type || "LOST",
+                title: params.title || "",
+                category: params.category || "อุปกรณ์อิเล็กทรอนิกส์ (มือถือ, iPad, โน้ตบุ๊ก, หูฟัง)",
+                location: params.location || "",
+                description: params.description || "",
+                photoUrl: params.photoUrl || "",
+                reporterId: user.studentId,
+                reporterName: user.fullName,
+                reporterFaculty: user.faculty,
+                reporterIg: user.instagram,
+                status: "OPEN",
+                createdAt: Date.now()
+            };
+            simPosts.unshift(newPost);
+            saveSimPosts();
+            appData.posts = simPosts;
+            clientSimState.notifications.unshift({
+                title: (newPost.type === 'LOST' ? '🔴 ตามหา: ' : '🟢 พบของ: ') + newPost.title,
+                message: newPost.location + " (" + newPost.reporterName + ")",
+                appSource: "PSRU Lost & Found",
+                timestamp: Date.now()
+            });
+            return { success: true, message: "บันทึกประกาศสำเร็จ", data: { post: newPost } };
+        }
+        case "RESOLVE_POST": {
+            const post = simPosts.find(p => p.id === params.itemId);
+            if (post) {
+                post.status = "RESOLVED";
+                saveSimPosts();
+                appData.posts = simPosts;
+                return { success: true, message: "ปรับสถานะเรียบร้อยแล้ว" };
+            }
+            return { success: false, message: "ไม่พบประกาศที่ระบุ" };
+        }
+        case "DELETE_POST": {
+            simPosts = simPosts.filter(p => p.id !== params.itemId);
+            saveSimPosts();
+            appData.posts = simPosts;
+            return { success: true, message: "ลบประกาศเรียบร้อยแล้ว" };
+        }
+        case "UPDATE_PROFILE": {
+            if (appData.currentUser) {
+                if (params.instagram !== undefined) appData.currentUser.instagram = params.instagram;
+                if (params.profileImage !== undefined) appData.currentUser.profileImage = params.profileImage;
+                saveSimUsers();
+            }
+            return { success: true, message: "อัปเดตโปรไฟล์เรียบร้อยแล้ว" };
+        }
+        case "TOGGLE_WIFI": {
+            if (!appData.wifiEnabled) appData.wifiEnabled = false;
+            appData.wifiEnabled = !appData.wifiEnabled;
+            return { success: true };
+        }
+        case "TOGGLE_CELLULAR": {
+            if (!appData.cellularEnabled) appData.cellularEnabled = false;
+            appData.cellularEnabled = !appData.cellularEnabled;
+            return { success: true };
+        }
+        case "SET_BRIGHTNESS": {
+            clientSimState.display.brightness = Number(params.brightness) || 75;
+            return { success: true };
+        }
+        case "SET_VOLUME": {
+            clientSimState.device.volume = Number(params.volume) || 70;
+            return { success: true };
+        }
+        default:
+            return { success: true };
+    }
+}
+
+// Fetch Full Phone State from Java Localhost Backend (with seamless cloud fallback)
 async function fetchPhoneState() {
     try {
         const res = await fetch("/api/state");
-        if (!res.ok) throw new Error("Network response not ok");
+        if (!res.ok) throw new Error("Backend response " + res.status);
         const state = await res.json();
+        isOfflineMode = false;
+        hideCloudIndicator();
         currentPhoneState = state;
         renderPhoneUI(state);
         renderInspector(state);
     } catch (err) {
-        console.warn("Error fetching phone state:", err);
+        if (!isOfflineMode || !clientSimState) {
+            enableClientSimulation();
+        } else {
+            renderPhoneUI(clientSimState);
+            renderInspector(clientSimState);
+        }
     }
 }
 
@@ -1142,53 +1443,145 @@ function renderInspector(state) {
     }
 }
 
-// Phone Actions (API Calls)
+// Phone Actions (Hybrid: Java Localhost API with Cloud Fallback)
 async function togglePower() {
     pulsePillar('pillarEncapsulation');
-    await fetch("/api/power", { method: "POST" });
-    fetchPhoneState();
+    if (isOfflineMode) {
+        clientSimState.device.isPoweredOn = !clientSimState.device.isPoweredOn;
+        clientSimState.display.isScreenOn = clientSimState.device.isPoweredOn;
+        renderPhoneUI(clientSimState);
+        renderInspector(clientSimState);
+        return;
+    }
+    try {
+        await fetch("/api/power", { method: "POST" });
+        fetchPhoneState();
+    } catch(e) {
+        enableClientSimulation();
+    }
 }
 
 async function changeVolume(direction) {
     pulsePillar('pillarEncapsulation');
-    await fetch(`/api/volume/${direction}`, { method: "POST" });
-    fetchPhoneState();
+    if (isOfflineMode) {
+        const step = direction === 'up' ? 10 : -10;
+        clientSimState.device.volume = Math.max(0, Math.min(100, (clientSimState.device.volume || 70) + step));
+        renderInspector(clientSimState);
+        return;
+    }
+    try {
+        await fetch(`/api/volume/${direction}`, { method: "POST" });
+        fetchPhoneState();
+    } catch(e) {
+        enableClientSimulation();
+    }
 }
 
 async function chargeBattery(amount) {
     pulsePillar('pillarEncapsulation');
-    await fetch("/api/battery/charge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: String(amount) })
-    });
-    fetchPhoneState();
+    if (isOfflineMode) {
+        clientSimState.battery.level = 100;
+        renderPhoneUI(clientSimState);
+        renderInspector(clientSimState);
+        return;
+    }
+    try {
+        await fetch("/api/battery/charge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: String(amount) })
+        });
+        fetchPhoneState();
+    } catch(e) {
+        enableClientSimulation();
+    }
 }
 
 async function launchApp(appId) {
     lastRenderedAppKey = "";
     pulsePillar('pillarInheritance');
     pulsePillar('pillarPolymorphism');
-    await fetch("/api/app/launch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appId: appId })
-    });
-    fetchPhoneState();
+    if (isOfflineMode) {
+        if (appId === "com.psru.lostfound") {
+            clientSimState.runningApp = {
+                appId: "com.psru.lostfound",
+                appName: "PSRU Lost & Found",
+                state: "RESUMED",
+                appData: {
+                    isLoggedIn: true,
+                    currentUser: simUsers[0],
+                    posts: simPosts
+                }
+            };
+        } else if (appId === "com.android.settings") {
+            clientSimState.runningApp = {
+                appId: "com.android.settings",
+                appName: "Settings",
+                state: "RESUMED",
+                appData: {
+                    brand: "Google / PSRU",
+                    model: "Pixel 9 Pro",
+                    androidVersion: "Android 15",
+                    apiLevel: 35,
+                    kernel: "6.1.75-android15-g1234",
+                    serialNumber: "SN-6812247050",
+                    batteryMah: 5000,
+                    batteryLevel: 100,
+                    brightness: clientSimState.display.brightness || 85,
+                    volume: clientSimState.device.volume || 80,
+                    wifiEnabled: true,
+                    cellularEnabled: true
+                }
+            };
+        }
+        renderPhoneUI(clientSimState);
+        renderInspector(clientSimState);
+        return;
+    }
+    try {
+        await fetch("/api/app/launch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ appId: appId })
+        });
+        fetchPhoneState();
+    } catch (err) {
+        enableClientSimulation();
+    }
 }
 
 async function pressHome() {
     lastRenderedAppKey = "";
     pulsePillar('pillarPolymorphism');
-    await fetch("/api/home", { method: "POST" });
-    fetchPhoneState();
+    if (isOfflineMode) {
+        clientSimState.runningApp = null;
+        renderPhoneUI(clientSimState);
+        renderInspector(clientSimState);
+        return;
+    }
+    try {
+        await fetch("/api/home", { method: "POST" });
+        fetchPhoneState();
+    } catch(e) {
+        enableClientSimulation();
+    }
 }
 
 async function pressBack() {
     lastRenderedAppKey = "";
     pulsePillar('pillarPolymorphism');
-    await fetch("/api/back", { method: "POST" });
-    fetchPhoneState();
+    if (isOfflineMode) {
+        clientSimState.runningApp = null;
+        renderPhoneUI(clientSimState);
+        renderInspector(clientSimState);
+        return;
+    }
+    try {
+        await fetch("/api/back", { method: "POST" });
+        fetchPhoneState();
+    } catch(e) {
+        enableClientSimulation();
+    }
 }
 
 async function pressRecents() {
@@ -1196,14 +1589,30 @@ async function pressRecents() {
 }
 
 async function sendAppAction(action, params) {
-    const payload = Object.assign({ action: action }, params);
-    const res = await fetch("/api/app/action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
-    fetchPhoneState();
-    return res.json();
+    if (isOfflineMode) {
+        const res = executeSimAction(action, params);
+        renderPhoneUI(clientSimState);
+        renderInspector(clientSimState);
+        return res;
+    }
+    try {
+        const payload = Object.assign({ action: action }, params);
+        const res = await fetch("/api/app/action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        fetchPhoneState();
+        return await res.json();
+    } catch (err) {
+        isOfflineMode = true;
+        if (!clientSimState) enableClientSimulation();
+        const res = executeSimAction(action, params);
+        renderPhoneUI(clientSimState);
+        renderInspector(clientSimState);
+        return res;
+    }
 }
 
 function pulsePillar(elementId) {
@@ -1271,6 +1680,38 @@ async function fetchAndRenderDatabase() {
     const bodyEl = document.getElementById("dbModalBody");
     if (!bodyEl) return;
 
+    if (isOfflineMode) {
+        currentDatabaseData = {
+            users: simUsers.map(u => ({
+                studentId: u.studentId,
+                fullName: u.fullName,
+                faculty: u.faculty,
+                instagram: u.instagram,
+                hasProfilePhoto: !!u.profileImage,
+                registeredAt: u.registeredAt
+            })),
+            posts: simPosts,
+            storageFiles: (clientSimState && clientSimState.storage) ? clientSimState.storage.files : [],
+            metadata: {
+                storageEngine: "In-Memory OOP Simulation (Client Standalone)",
+                usersCollection: "Map<String, StudentUser> userDatabase",
+                postsCollection: "CopyOnWriteArrayList<LostFoundItem> itemList",
+                hardwareStorage: "Storage.java (Simulated Flash Storage)",
+                timestamp: Date.now()
+            }
+        };
+
+        const uCount = document.getElementById("dbUsersCount");
+        if (uCount) uCount.textContent = (currentDatabaseData.users || []).length;
+        const pCount = document.getElementById("dbPostsCount");
+        if (pCount) pCount.textContent = (currentDatabaseData.posts || []).length;
+        const sCount = document.getElementById("dbStorageCount");
+        if (sCount) sCount.textContent = (currentDatabaseData.storageFiles || []).length;
+
+        renderDatabaseTabContent();
+        return;
+    }
+
     try {
         bodyEl.innerHTML = '<div class="db-loading">กำลังเชื่อมต่อกับ Java Localhost Server...</div>';
         const res = await fetch("/api/database");
@@ -1288,7 +1729,8 @@ async function fetchAndRenderDatabase() {
 
         renderDatabaseTabContent();
     } catch (err) {
-        bodyEl.innerHTML = `<div class="db-error">❌ ไม่สามารถดึงข้อมูลได้: ${escapeHtml(err.message)}</div>`;
+        isOfflineMode = true;
+        fetchAndRenderDatabase();
     }
 }
 

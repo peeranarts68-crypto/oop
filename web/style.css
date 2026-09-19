@@ -2491,3 +2491,20 @@ body {
     display: flex;
     justify-content: space-between;
 }
+
+/* Cloud Sim Badge for Vercel */
+.cloud-sim-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    user-select: none;
+}
