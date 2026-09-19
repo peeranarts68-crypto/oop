@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android Phone OOP Simulator - Localhost</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Floating subtle toggle button in top corner -->
+    <div class="floating-controls">
+        <button class="btn-float btn-db-trigger" id="btnViewDatabase" onclick="openDatabaseModal()" title="เปิดดูฐานข้อมูล Live Database">
+            <span>🗄️ ดูฐานข้อมูล (View Database)</span>
+        </button>
+        <button class="btn-float" id="btnToggleInspector" onclick="toggleInspector()" title="เปิด/ปิด แผงสถาปัตยกรรม OOP">
+            <span>🔬 ข้อมูล OOP</span>
+        </button>
+    </div>
+
+    <div class="app-layout phone-only-mode" id="appLayout">
+        <main class="main-content">
+            <!-- Column 1: Virtual Android Phone -->
+            <section class="phone-section">
+                <div class="phone-wrapper">
+                    <!-- Hardware Volume & Power Buttons on Chassis -->
+                    <div class="hardware-button vol-up" onclick="changeVolume('up')" title="Hardware: Volume Up"></div>
+                    <div class="hardware-button vol-down" onclick="changeVolume('down')" title="Hardware: Volume Down"></div>
+                    <div class="hardware-button power-btn" onclick="togglePower()" title="Hardware: Power Key"></div>
+
+                    <!-- Phone Frame -->
+                    <div class="phone-chassis" id="phoneChassis">
+                        <!-- Speaker Earpiece -->
+                        <div class="speaker-grill"></div>
+
+                        <!-- Screen Area -->
+                        <div class="phone-screen" id="phoneScreen">
+                            <!-- Punch hole camera -->
+                            <div class="punch-hole-camera"></div>
+
+                            <!-- Screen Off Overlay -->
+                            <div class="screen-off-overlay" id="screenOffOverlay">
+                                <div class="power-off-msg">
+                                    <svg viewBox="0 0 24 24" width="48" height="48" fill="#555"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+                                    <p>Device is Powered Off</p>
+                                    <small>กดปุ่ม Power ด้านขวาเพื่อเปิดเครื่อง</small>
+                                </div>
+                            </div>
+
+                            <!-- Android Status Bar -->
+                            <div class="status-bar" id="statusBar">
+                                <div class="status-left">
+                                    <span id="statusClock">12:00</span>
+                                </div>
+                                <div class="status-right">
+                                    <span id="notifBadge" class="notif-pill" onclick="toggleNotificationShade()">🔔 <span id="notifCount">0</span></span>
+                                    <span id="wifiIcon" title="Wi-Fi">📶</span>
+                                    <span id="batteryPercent">88%</span>
+                                    <span id="batteryIcon" class="battery-icon">🔋</span>
+                                </div>
+                            </div>
+
+                            <!-- Notification Shade (Pull down) -->
+                            <div class="notification-shade" id="notificationShade">
+                                <div class="shade-header">
+                                    <span>Notifications (Observer Pattern)</span>
+                                    <button class="btn-text" onclick="clearNotifications()">Clear All</button>
+                                </div>
+                                <div class="shade-list" id="shadeNotificationList">
+                                    <p class="empty-shade">ไม่มีการแจ้งเตือน</p>
+                                </div>
+                                <div class="shade-close" onclick="toggleNotificationShade()">▲ ปิดแถบแจ้งเตือน</div>
+                            </div>
+
+                            <!-- Screen Contents Container -->
+                            <div class="screen-body" id="screenBody">
+                                <!-- Home Screen View -->
+                                <div class="screen-view home-view" id="homeView">
+                                    <div class="home-widget-clock">
+                                        <div class="big-time" id="homeClock">12:00</div>
+                                        <div class="sub-date" id="homeDate">วันอาทิตย์ที่ 13 กันยายน</div>
+                                    </div>
+
+                                    <div class="google-search-bar">
+                                        <span class="g-logo">G</span>
+                                        <span class="g-text">ค้นหาใน Android OOP...</span>
+                                    </div>
+
+                                    <!-- Installed Apps Grid -->
+                                    <div class="apps-grid" id="appsGrid">
+                                        <!-- Rendered dynamically -->
+                                    </div>
+                                </div>
+
+                                <!-- App View Container (when an app is active) -->
+                                <div class="screen-view app-view" id="appView" style="display: none;">
+                                    <div class="app-header-bar">
+                                        <button class="btn-icon" onclick="pressHome()">✕</button>
+                                        <span class="app-header-title" id="appHeaderTitle">Application</span>
+                                        <span class="app-header-status" id="appHeaderStatus">RESUMED</span>
+                                    </div>
+                                    <div class="app-content-body" id="appContentBody">
+                                        <!-- Dynamic App Content -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Android Navigation Bar (Bottom) -->
+                            <div class="nav-bar">
+                                <button class="nav-btn" onclick="pressBack()" title="Back Button">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                                </button>
+                                <button class="nav-btn" onclick="pressHome()" title="Home Button">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+                                </button>
+                                <button class="nav-btn" onclick="pressRecents()" title="Recents / Task Switcher">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Column 2: OOP Live Architecture & State Inspector -->
+            <section class="inspector-section">
+                <!-- OOP Pillars Live Activity Indicator -->
+                <div class="card oop-activity-card">
+                    <h2>🎯 เสาหลัก OOP ที่ทำงานอยู่ขณะนี้ (OOP Pillars in Action)</h2>
+                    <div class="pillars-grid">
+                        <div class="pillar-box" id="pillarAbstraction">
+                            <div class="pillar-icon">🏛️</div>
+                            <div class="pillar-title">Abstraction</div>
+                            <div class="pillar-desc">Device, SmartPhone, AndroidApplication, NetworkAdapter</div>
+                        </div>
+                        <div class="pillar-box" id="pillarInheritance">
+                            <div class="pillar-icon">🧬</div>
+                            <div class="pillar-title">Inheritance</div>
+                            <div class="pillar-desc">Device &rarr; SmartPhone &rarr; AndroidPhone &rarr; Apps</div>
+                        </div>
+                        <div class="pillar-box" id="pillarPolymorphism">
+                            <div class="pillar-icon">🎭</div>
+                            <div class="pillar-title">Polymorphism</div>
+                            <div class="pillar-desc">Dynamic dispatch ใน executeAction() & App Lifecycle</div>
+                        </div>
+                        <div class="pillar-box" id="pillarEncapsulation">
+                            <div class="pillar-icon">🛡️</div>
+                            <div class="pillar-title">Encapsulation</div>
+                            <div class="pillar-desc">ควบคุม Battery, Storage, Display ผ่าน Private fields & Validation</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Java Objects Memory Inspector -->
+                <div class="card state-inspector-card">
+                    <div class="card-header">
+                        <h2>🔬 Live Java Heap & Object Inspector</h2>
+                        <span class="live-dot-pulse">Live</span>
+                    </div>
+
+                    <div class="inspector-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">🔋 Battery Object</div>
+                            <div class="stat-value" id="inspectBattery">-- %</div>
+                            <div class="stat-sub" id="inspectBatteryMah">5050 mAh</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">💾 Storage Object</div>
+                            <div class="stat-value" id="inspectStorage">-- MB Free</div>
+                            <div class="stat-sub" id="inspectStorageUsed">Used: -- MB</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">📱 Active App Object</div>
+                            <div class="stat-value" id="inspectApp">Launcher (Home)</div>
+                            <div class="stat-sub" id="inspectAppState">Lifecycle: IDLE</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">📡 Network Adapter</div>
+                            <div class="stat-value" id="inspectNetwork">Wi-Fi (5GHz)</div>
+                            <div class="stat-sub" id="inspectSignal">Signal: 85%</div>
+                        </div>
+                    </div>
+
+                    <!-- Active Stored Files Table -->
+                    <div class="sub-table-container">
+                        <h3>📁 รายการไฟล์ใน Hardware Storage (Internal Flash Memory)</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ชื่อไฟล์</th>
+                                    <th>ขนาด (MB)</th>
+                                    <th>MIME Type</th>
+                                </tr>
+                            </thead>
+                            <tbody id="storageFilesList">
+                                <tr><td colspan="3">กำลังโหลดข้อมูล...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- OOP Class Hierarchy & Design Patterns -->
+                <div class="card class-hierarchy-card">
+                    <h2>📐 แผนผังโครงสร้างคลาส OOP (Class Hierarchy & Design Patterns)</h2>
+                    <div class="tree-view">
+                        <div class="tree-node abstract-node">
+                            <span class="node-tag tag-abstract">abstract</span> <strong>Device</strong>
+                            <div class="tree-children">
+                                <div class="tree-node abstract-node">
+                                    <span class="node-tag tag-abstract">abstract</span> <strong>SmartPhone</strong> <em>(has-a Battery, Display, Storage, Camera, NetworkAdapter)</em>
+                                    <div class="tree-children">
+                                        <div class="tree-node concrete-node active">
+                                            <span class="node-tag tag-class">class</span> <strong>AndroidPhone</strong> <em>(has-a AndroidOS, manages Apps)</em>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tree-node abstract-node mt-2">
+                            <span class="node-tag tag-abstract">abstract</span> <strong>AndroidApplication</strong> <em>(Activity Lifecycle: onCreate &rarr; onStart &rarr; onResume &rarr; onPause &rarr; onDestroy)</em>
+                            <div class="tree-children app-chips-row">
+                                <span class="chip">SettingsApp</span>
+                                <span class="chip">PsruLostFoundApp</span>
+                            </div>
+                        </div>
+
+                        <div class="patterns-summary mt-2">
+                            <div><strong>Design Patterns ที่นำมาใช้:</strong></div>
+                            <ul>
+                                <li><span class="badge-pattern">Observer Pattern</span> <code>NotificationManager</code> กระจายข้อมูล Notification ให้ Observers</li>
+                                <li><span class="badge-pattern">Factory Pattern</span> <code>AppFactory.createApp(type, phone)</code> สำหรับสร้าง Application Instances</li>
+                                <li><span class="badge-pattern">State Pattern</span> Lifecycle ควบคุมสถานะแอป (RESUMED, PAUSED, STOPPED)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+
+    <!-- Database Viewer Modal -->
+    <div class="db-modal-overlay" id="dbModalOverlay" onclick="closeDatabaseModal(event)">
+        <div class="db-modal-card" onclick="event.stopPropagation()">
+            <div class="db-modal-header">
+                <div class="db-modal-header-left">
+                    <div class="db-modal-title">🗄️ Live In-Memory Database Viewer</div>
+                    <div class="db-modal-subtitle">ฐานข้อมูลอ็อบเจกต์ในหน่วยความจำ RAM (Java Heap Memory) &bull; /api/database</div>
+                </div>
+                <div class="db-modal-header-right">
+                    <button class="btn-db-refresh" onclick="fetchAndRenderDatabase()">🔄 รีเฟรช</button>
+                    <button class="btn-db-close" onclick="closeDatabaseModal()">✕</button>
+                </div>
+            </div>
+
+            <!-- Database Tabs -->
+            <div class="db-tabs-bar">
+                <button class="db-tab-btn active" id="tabBtnUsers" onclick="switchDbTab('users')">
+                    👥 ตารางผู้ใช้งาน (<span id="dbUsersCount">0</span>)
+                </button>
+                <button class="db-tab-btn" id="tabBtnPosts" onclick="switchDbTab('posts')">
+                    📢 ตารางประกาศของหาย/พบ (<span id="dbPostsCount">0</span>)
+                </button>
+                <button class="db-tab-btn" id="tabBtnStorage" onclick="switchDbTab('storage')">
+                    💾 Storage Files (<span id="dbStorageCount">0</span>)
+                </button>
+                <button class="db-tab-btn" id="tabBtnRaw" onclick="switchDbTab('raw')">
+                    🔍 Raw JSON
+                </button>
+            </div>
+
+            <!-- Tab Contents -->
+            <div class="db-modal-body" id="dbModalBody">
+                <div class="db-loading">กำลังโหลดข้อมูลจาก Java Server...</div>
+            </div>
+
+            <div class="db-modal-footer">
+                <span>⚡ Backend: Java 21 &bull; Pattern: MVC Controller/Model &bull; REST API: <code>/api/database</code></span>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,2493 @@
+:root {
+    --bg-main: #0d1117;
+    --bg-card: #161b22;
+    --border-color: #30363d;
+    --text-main: #f0f6fc;
+    --text-muted: #8b949e;
+    --accent-android: #3ddc84;
+    --accent-blue: #58a6ff;
+    --accent-purple: #bc8cff;
+    --accent-orange: #f0883e;
+    --phone-chassis: #1e242e;
+    --phone-bezel: #0a0d12;
+    --phone-screen-bg: #121820;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-main);
+    background: radial-gradient(circle at 50% 20%, #17202e 0%, #080b10 100%);
+    color: var(--text-main);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.floating-controls {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    z-index: 999;
+}
+
+.btn-float {
+    background: rgba(22, 27, 34, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #8b949e;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.btn-float:hover {
+    color: #fff;
+    border-color: var(--accent-android);
+    background: rgba(30, 36, 46, 0.95);
+    transform: translateY(-1px);
+}
+
+.app-layout {
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.app-layout.phone-only-mode {
+    max-width: 440px;
+    justify-content: center;
+}
+
+.phone-only-mode .main-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.phone-only-mode .inspector-section {
+    display: none;
+}
+
+/* Header */
+.top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+}
+
+.logo-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.android-icon-pulse {
+    background: rgba(61, 220, 132, 0.15);
+    border: 1px solid rgba(61, 220, 132, 0.4);
+    padding: 8px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.top-nav h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.badge-online {
+    background: rgba(61, 220, 132, 0.2);
+    color: var(--accent-android);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+}
+
+.quick-controls {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-primary {
+    background: var(--accent-android);
+    color: #0d1117;
+}
+
+.btn-primary:hover {
+    background: #4ae48f;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #21262d;
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: #30363d;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Main Content Grid */
+.main-content {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* PHONE SECTION */
+.phone-section {
+    display: flex;
+    justify-content: center;
+    position: sticky;
+    top: 1rem;
+}
+
+.phone-wrapper {
+    position: relative;
+    padding: 10px 0;
+}
+
+/* Hardware buttons on phone edge */
+.hardware-button {
+    position: absolute;
+    background: #333a44;
+    border: 1px solid #4a5260;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 10;
+    transition: background 0.1s;
+}
+
+.hardware-button:active {
+    background: var(--accent-android);
+}
+
+.vol-up {
+    left: -7px;
+    top: 140px;
+    width: 6px;
+    height: 50px;
+}
+
+.vol-down {
+    left: -7px;
+    top: 205px;
+    width: 6px;
+    height: 50px;
+}
+
+.power-btn {
+    right: -7px;
+    top: 160px;
+    width: 6px;
+    height: 60px;
+}
+
+/* Phone Frame Chassis */
+.phone-chassis {
+    width: 360px;
+    height: 740px;
+    background: var(--phone-chassis);
+    border-radius: 48px;
+    padding: 14px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 0 4px #2b3340;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.speaker-grill {
+    width: 60px;
+    height: 4px;
+    background: #111;
+    border-radius: 2px;
+    margin: 0 auto 6px auto;
+}
+
+.phone-screen {
+    flex: 1;
+    background: var(--phone-screen-bg);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background-image: radial-gradient(circle at 50% 10%, #1e293b 0%, #0f172a 100%);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+/* Punch Hole Camera */
+.punch-hole-camera {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 14px;
+    background: #000;
+    border-radius: 50%;
+    z-index: 50;
+    box-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+/* Screen Off Overlay */
+.screen-off-overlay {
+    position: absolute;
+    inset: 0;
+    background: #000000;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #666;
+    padding: 2rem;
+}
+
+.screen-off-overlay.active {
+    display: flex;
+}
+
+.power-off-msg svg {
+    margin-bottom: 1rem;
+}
+
+/* Status Bar */
+.status-bar {
+    height: 32px;
+    padding: 6px 18px 0 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    z-index: 20;
+    user-select: none;
+}
+
+.status-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.notif-pill {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 1px 6px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.7rem;
+}
+
+/* Notification Shade */
+.notification-shade {
+    position: absolute;
+    top: 32px;
+    left: 0;
+    right: 0;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #334155;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 40;
+    padding: 10px 14px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.notification-shade.open {
+    display: flex;
+}
+
+.shade-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 4px;
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    color: #f87171;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.shade-item {
+    background: #1e293b;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-android);
+}
+
+.shade-item-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.shade-item-msg {
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+
+.shade-item-app {
+    font-size: 0.65rem;
+    color: var(--accent-android);
+    margin-top: 2px;
+}
+
+.empty-shade {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #64748b;
+    padding: 10px 0;
+}
+
+.shade-close {
+    text-align: center;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    cursor: pointer;
+    padding-top: 6px;
+}
+
+/* Screen Body */
+.screen-body {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.screen-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+/* Home View */
+.home-view {
+    padding: 24px 16px 12px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.home-widget-clock {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.big-time {
+    font-size: 3.2rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -1px;
+}
+
+.sub-date {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.google-search-bar {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.g-logo {
+    font-weight: 700;
+    color: var(--accent-android);
+}
+
+.g-text {
+    font-size: 0.8rem;
+    color: #cbd5e1;
+}
+
+/* Apps Grid */
+.apps-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px 8px;
+    margin-top: auto;
+    padding-bottom: 20px;
+}
+
+.app-icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    user-select: none;
+}
+
+.app-icon-item:hover {
+    transform: scale(1.08);
+}
+
+.app-icon-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.icon-dialer { background: linear-gradient(135deg, #10b981, #059669); }
+.icon-camera { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.icon-notes { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.icon-calculator { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+.icon-settings { background: linear-gradient(135deg, #64748b, #475569); }
+
+.app-label {
+    font-size: 0.7rem;
+    color: #e2e8f0;
+    text-align: center;
+    font-weight: 500;
+}
+
+/* App View Container */
+.app-view {
+    background: #0f172a;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header-bar {
+    height: 40px;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+}
+
+.app-header-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.app-header-status {
+    font-size: 0.65rem;
+    background: rgba(61, 220, 132, 0.2);
+    color: var(--accent-android);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.app-content-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+/* App: Dialer UI */
+.dialer-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.dialer-display {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 16px 0;
+    min-height: 60px;
+    color: #fff;
+}
+
+.dialpad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 10px auto;
+    max-width: 260px;
+}
+
+.dial-key {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.dial-key span.sub {
+    font-size: 0.55rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.dial-key:active {
+    background: #334155;
+}
+
+.dial-actions {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.call-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #10b981;
+    color: #fff;
+    font-size: 1.5rem;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.end-call-btn {
+    background: #ef4444;
+}
+
+.call-history-box {
+    margin-top: 15px;
+    background: #1e293b;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+}
+
+/* App: Camera UI */
+.camera-viewfinder {
+    background: #000;
+    height: 280px;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #334155;
+}
+
+.viewfinder-grid {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    pointer-events: none;
+    opacity: 0.2;
+}
+
+.grid-line {
+    border-right: 1px dashed #fff;
+    border-bottom: 1px dashed #fff;
+}
+
+.animated-camera-subject {
+    font-size: 3rem;
+    animation: floatSubject 3s ease-in-out infinite;
+}
+
+@keyframes floatSubject {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.flash-screen {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s;
+}
+
+.camera-controls {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.shutter-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #fff;
+    border: 4px solid #334155;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.shutter-btn:active {
+    transform: scale(0.92);
+}
+
+.camera-preview-thumb {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: #1e293b;
+    border: 1px solid #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+/* App: Notes UI */
+.note-input-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.note-input-box input, .note-input-box textarea {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.8rem;
+}
+
+.notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.note-card {
+    background: #1e293b;
+    padding: 10px;
+    border-radius: 8px;
+    border-left: 3px solid #f59e0b;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.note-card-title {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #fff;
+}
+
+.note-card-body {
+    font-size: 0.75rem;
+    color: #cbd5e1;
+    white-space: pre-line;
+    margin-top: 4px;
+}
+
+/* App: Calculator UI */
+.calc-display {
+    background: #1e293b;
+    padding: 16px 12px;
+    border-radius: 8px;
+    text-align: right;
+    margin-bottom: 12px;
+}
+
+.calc-expr {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    min-height: 18px;
+}
+
+.calc-res {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.calc-btn {
+    padding: 14px 0;
+    border-radius: 8px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.calc-btn:active { background: #334155; }
+.calc-btn.op { background: #4f46e5; }
+.calc-btn.eq { background: var(--accent-android); color: #0d1117; }
+.calc-btn.clear { background: #ef4444; }
+
+/* App: Settings UI */
+.settings-group {
+    background: #1e293b;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.settings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #334155;
+}
+
+.settings-item:last-child {
+    border-bottom: none;
+}
+
+.settings-item span {
+    font-size: 0.8rem;
+}
+
+/* Nav Bar (Android Bottom) */
+.nav-bar {
+    height: 38px;
+    background: #090d14;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 20;
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 6px 14px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* RIGHT COLUMN: INSPECTOR */
+.inspector-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.card h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: #ffffff;
+}
+
+/* Pillars Grid */
+.pillars-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.pillar-box {
+    background: #0f141c;
+    border: 1px solid #28303d;
+    border-radius: 8px;
+    padding: 10px;
+    transition: all 0.3s ease;
+}
+
+.pillar-box.active-pulse {
+    border-color: var(--accent-android);
+    box-shadow: 0 0 12px rgba(61, 220, 132, 0.3);
+    background: rgba(61, 220, 132, 0.08);
+}
+
+.pillar-icon {
+    font-size: 1.3rem;
+    margin-bottom: 4px;
+}
+
+.pillar-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #ffffff;
+}
+
+.pillar-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Card Header with Live Pulse */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.live-dot-pulse {
+    background: rgba(61, 220, 132, 0.15);
+    color: var(--accent-android);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.live-dot-pulse::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--accent-android);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-android);
+}
+
+/* Inspector Stats Grid */
+.inspector-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.stat-card {
+    background: #0f141c;
+    border: 1px solid #28303d;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.stat-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    margin: 3px 0;
+}
+
+.stat-sub {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+/* Sub-table */
+.sub-table-container h3 {
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    color: #cbd5e1;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+    background: #0f141c;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.data-table th, .data-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #28303d;
+}
+
+.data-table th {
+    background: #1a222d;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* Tree view */
+.tree-view {
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+.tree-node {
+    padding: 4px 0;
+}
+
+.tree-children {
+    padding-left: 20px;
+    border-left: 1px dashed #30363d;
+    margin-left: 6px;
+    margin-top: 4px;
+}
+
+.node-tag {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+}
+
+.tag-abstract {
+    background: rgba(240, 136, 62, 0.2);
+    color: var(--accent-orange);
+}
+
+.tag-class {
+    background: rgba(88, 166, 255, 0.2);
+    color: var(--accent-blue);
+}
+
+.app-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 6px;
+}
+
+.chip {
+    background: #21262d;
+    border: 1px solid #30363d;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    color: var(--accent-blue);
+}
+
+.patterns-summary ul {
+    list-style: none;
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.badge-pattern {
+    background: rgba(188, 140, 255, 0.2);
+    color: var(--accent-purple);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-right: 6px;
+}
+
+.mt-2 {
+    margin-top: 10px;
+}
+
+/* PSRU Lost & Found App Styling */
+.icon-psru-wrapper {
+    background: #008738 !important;
+    padding: 0 !important;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0, 135, 56, 0.4) !important;
+}
+
+.app-icon-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 14px;
+}
+
+/* Portal Modal Card (Matching Screenshot with PSRU Green Theme) */
+.portal-card {
+    background: #0c1017;
+    border-radius: 24px;
+    padding: 20px 16px 16px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #1e293b transparent;
+}
+
+.portal-header {
+    text-align: center;
+    margin-bottom: 20px;
+    position: relative;
+    padding-top: 4px;
+}
+
+.portal-title.neon-green {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #00e676;
+    text-shadow: 0 0 12px rgba(0, 230, 118, 0.6), 0 0 28px rgba(0, 230, 118, 0.3);
+    text-transform: uppercase;
+}
+
+.portal-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #facc15; /* Yellow/Gold as in screenshot */
+    margin-top: 5px;
+    letter-spacing: 0.3px;
+}
+
+.portal-close-btn {
+    position: absolute;
+    right: 0;
+    top: -2px;
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: color 0.15s;
+}
+
+.portal-close-btn:hover {
+    color: #ffffff;
+}
+
+/* Tabs Pill Container */
+.portal-tabs-pill {
+    display: flex;
+    background: #141b26;
+    border: 1px solid #222d3e;
+    border-radius: 14px;
+    padding: 4px;
+    margin-bottom: 22px;
+}
+
+.portal-tab-btn {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    background: transparent;
+    color: #8b949e;
+    font-weight: 700;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.portal-tab-btn.active {
+    background: linear-gradient(135deg, #008738, #005a25);
+    color: #ffffff;
+    box-shadow: 0 0 18px rgba(0, 135, 56, 0.65);
+}
+
+/* Form Inputs */
+.portal-form-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.portal-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.portal-input-group label {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+.portal-input-group input,
+.portal-input-group select {
+    background: #090d14;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    color: #ffffff;
+    padding: 10px 12px;
+    font-size: 0.84rem;
+    outline: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.portal-input-group select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300e676' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+    padding-right: 34px;
+}
+
+.portal-input-group select option {
+    background: #0f172a;
+    color: #f1f5f9;
+    padding: 8px 10px;
+}
+
+.portal-input-group input::placeholder {
+    color: #475569;
+}
+
+.portal-input-group input:focus,
+.portal-input-group select:focus {
+    border-color: #00e676;
+    box-shadow: 0 0 14px rgba(0, 230, 118, 0.35);
+}
+
+/* Big Glowing Action Button */
+.btn-portal-submit {
+    width: 100%;
+    background: linear-gradient(135deg, #008738, #005a25);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    padding: 14px 0;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    margin-top: 14px;
+    box-shadow: 0 0 25px rgba(0, 135, 56, 0.7), 0 4px 14px rgba(0,0,0,0.5);
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+.btn-portal-submit:hover {
+    background: linear-gradient(135deg, #00a344, #00702e);
+    box-shadow: 0 0 30px rgba(0, 230, 118, 0.8);
+    transform: translateY(-1px);
+}
+
+.btn-portal-submit:active {
+    transform: scale(0.98);
+}
+
+/* Bottom Link */
+.portal-bottom-link {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.portal-bottom-link a {
+    color: #00e676;
+    font-weight: 700;
+    text-decoration: underline;
+    margin-left: 4px;
+    text-shadow: 0 0 8px rgba(0, 230, 118, 0.5);
+}
+
+/* Footer */
+.portal-footer {
+    text-align: center;
+    margin-top: auto;
+    padding-top: 24px;
+    font-size: 0.65rem;
+    color: #475569;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Logged In Profile Box */
+.portal-profile-box {
+    text-align: center;
+    padding: 10px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Profile Photo Avatar */
+.portal-avatar-wrapper {
+    position: relative;
+    width: 86px;
+    height: 86px;
+    border-radius: 50%;
+    margin: 2px auto 4px auto;
+    cursor: pointer;
+    border: 3px solid #00e676;
+    box-shadow: 0 0 20px rgba(0, 230, 118, 0.4);
+    transition: all 0.25s ease;
+    background: #141b26;
+}
+
+.portal-avatar-wrapper:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 28px rgba(0, 230, 118, 0.65);
+}
+
+.portal-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+.portal-avatar-fallback {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.8rem;
+    background: linear-gradient(135deg, #141b26, #1e293b);
+}
+
+.portal-avatar-edit-badge {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    background: #00e676;
+    color: #0c1017;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    border: 2px solid #0c1017;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    transition: transform 0.2s;
+}
+
+.portal-avatar-wrapper:hover .portal-avatar-edit-badge {
+    transform: scale(1.15);
+}
+
+.portal-change-photo-btn {
+    font-size: 0.7rem;
+    color: #00e676;
+    margin-top: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: color 0.15s;
+    text-decoration: underline;
+}
+
+.portal-change-photo-btn:hover {
+    color: #ffffff;
+}
+
+.portal-user-name {
+    font-size: 1.12rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-top: 6px;
+}
+
+.portal-user-id {
+    font-size: 0.82rem;
+    color: #94a3b8;
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.portal-user-faculty {
+    font-size: 0.76rem;
+    color: #38bdf8;
+    margin-top: 6px;
+    font-weight: 500;
+    background: rgba(56, 189, 248, 0.12);
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    display: inline-block;
+}
+
+/* Contact Card: ONLY Instagram (IG) */
+.portal-ig-contact-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(225, 48, 108, 0.15), rgba(64, 93, 230, 0.12));
+    border: 1px solid rgba(225, 48, 108, 0.4);
+    border-radius: 14px;
+    padding: 10px 14px;
+    margin-top: 14px;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.portal-ig-contact-card:hover {
+    border-color: #e1306c;
+    box-shadow: 0 0 20px rgba(225, 48, 108, 0.45);
+    transform: translateY(-1px);
+}
+
+.portal-ig-icon {
+    color: #e1306c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(225, 48, 108, 0.15);
+    padding: 6px;
+    border-radius: 10px;
+}
+
+.portal-ig-content {
+    text-align: left;
+    flex: 1;
+}
+
+.portal-ig-label {
+    font-size: 0.62rem;
+    color: #f472b6;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
+.portal-ig-handle {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.3px;
+}
+
+.portal-ig-edit {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.portal-ig-contact-card:hover .portal-ig-edit {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.portal-badge-active {
+    margin-top: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.15);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 230, 118, 0.3);
+}
+
+/* Registration Photo Picker Row */
+.portal-photo-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #090d14;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+}
+
+.portal-photo-thumbnail {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #00e676;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #141b26;
+    flex-shrink: 0;
+}
+
+.reg-photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.btn-portal-upload {
+    background: #1e293b;
+    color: #f1f5f9;
+    border: 1px solid #334155;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s;
+}
+
+.btn-portal-upload:hover {
+    background: #334155;
+    border-color: #00e676;
+    color: #ffffff;
+}
+
+.photo-upload-hint {
+    font-size: 0.65rem;
+    color: #64748b;
+    margin-top: 3px;
+}
+
+.mt-4 {
+    margin-top: 16px;
+}
+
+
+/* ==========================================================================
+   PSRU LOST & FOUND FEED & POST STYLING (Green Emerald Theme)
+   ========================================================================== */
+
+.portal-card-logged-in {
+    padding: 14px 12px 14px 12px;
+}
+
+.logged-in-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.portal-header-left {
+    text-align: left;
+}
+
+.logged-in-header .portal-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.logged-in-header .portal-subtitle {
+    font-size: 0.62rem;
+    margin-top: 2px;
+    color: #facc15;
+}
+
+/* Sub-navigation Tabs (Feed, New Post, Profile) */
+.portal-subnav-bar {
+    display: flex;
+    background: #101622;
+    border: 1px solid #1f293d;
+    border-radius: 12px;
+    padding: 3px;
+    gap: 4px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.portal-subnav-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 4px;
+    border: none;
+    background: transparent;
+    color: #8b949e;
+    font-size: 0.74rem;
+    font-weight: 700;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.portal-subnav-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.portal-subnav-btn.active {
+    background: linear-gradient(135deg, #008738, #005a25);
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(0, 135, 56, 0.6);
+}
+
+.subnav-icon {
+    font-size: 0.88rem;
+}
+
+.portal-tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+
+/* Feed Filter Bar */
+.feed-filter-bar {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+}
+
+.feed-filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.feed-filter-btn {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    background: #141b26;
+    border: 1px solid #232d3f;
+    border-radius: 16px;
+    color: #94a3b8;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.feed-filter-btn:hover {
+    color: #ffffff;
+    border-color: #38bdf8;
+}
+
+.feed-filter-btn.active {
+    background: #1e293b;
+    color: #00e676;
+    border-color: #00e676;
+    box-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
+}
+
+/* Quick Action Banner */
+.feed-action-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(0, 135, 56, 0.25), rgba(16, 22, 34, 0.85));
+    border: 1px solid rgba(0, 230, 118, 0.35);
+    border-radius: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.feed-action-banner:hover {
+    border-color: #00e676;
+    box-shadow: 0 0 16px rgba(0, 230, 118, 0.3);
+    transform: translateY(-1px);
+}
+
+.banner-title {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.banner-sub {
+    font-size: 0.62rem;
+    color: #a7f3d0;
+}
+
+.btn-banner-post {
+    background: #00e676;
+    color: #080d14;
+    font-weight: 800;
+    font-size: 0.72rem;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(0, 230, 118, 0.5);
+}
+
+/* Feed Cards List */
+.feed-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.feed-card {
+    background: #121822;
+    border: 1px solid #1e293b;
+    border-radius: 14px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.feed-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+.feed-card.card-lost {
+    border-left: 4px solid #ef4444;
+}
+
+.feed-card.card-found {
+    border-left: 4px solid #00e676;
+}
+
+.feed-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.feed-badge-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.feed-type-badge {
+    font-size: 0.64rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+}
+
+.feed-type-badge.type-lost {
+    background: rgba(239, 68, 68, 0.18);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.feed-type-badge.type-found {
+    background: rgba(0, 230, 118, 0.18);
+    color: #86efac;
+    border: 1px solid rgba(0, 230, 118, 0.35);
+}
+
+.feed-status-badge {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.status-open {
+    background: rgba(234, 179, 8, 0.15);
+    color: #fde047;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.status-resolved {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.feed-time-text {
+    font-size: 0.62rem;
+    color: #64748b;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.feed-item-title {
+    font-size: 0.94rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.35;
+}
+
+.feed-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.feed-meta-pill {
+    background: #0b0f16;
+    color: #94a3b8;
+    border: 1px solid #1a2333;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 500;
+}
+
+.feed-photo-container {
+    width: 100%;
+    max-height: 180px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #1e293b;
+    background: #000;
+}
+
+.feed-photo-img {
+    width: 100%;
+    height: 100%;
+    max-height: 180px;
+    object-fit: cover;
+    display: block;
+}
+
+.feed-item-desc {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    line-height: 1.45;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 8px 10px;
+    border-radius: 8px;
+    border-left: 2px solid #334155;
+}
+
+.feed-reporter-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 4px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.feed-reporter-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.reporter-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.reporter-faculty {
+    font-size: 0.62rem;
+    color: #38bdf8;
+}
+
+/* Feed Instagram Contact Button */
+.feed-contact-wrapper {
+    margin-top: 2px;
+}
+
+.feed-ig-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(225, 48, 108, 0.2), rgba(64, 93, 230, 0.15));
+    border: 1px solid rgba(225, 48, 108, 0.45);
+    border-radius: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.feed-ig-btn:hover {
+    border-color: #e1306c;
+    box-shadow: 0 0 16px rgba(225, 48, 108, 0.45);
+    transform: translateY(-1px);
+}
+
+.feed-ig-icon {
+    color: #e1306c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.feed-ig-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.feed-ig-label {
+    font-size: 0.65rem;
+    color: #f472b6;
+    font-weight: 600;
+}
+
+.feed-ig-handle {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.feed-ig-arrow {
+    font-size: 0.85rem;
+    color: #f472b6;
+    font-weight: 700;
+}
+
+/* Owner Actions (Resolve, Delete) */
+.feed-owner-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.btn-owner-action {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.btn-resolve {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.btn-resolve:hover {
+    background: rgba(34, 197, 94, 0.35);
+}
+
+.btn-delete {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.35);
+}
+
+/* Empty State */
+.feed-empty-state {
+    text-align: center;
+    padding: 30px 14px;
+    background: #111722;
+    border-radius: 16px;
+    border: 1px dashed #232d3f;
+}
+
+.empty-icon {
+    font-size: 2.2rem;
+    margin-bottom: 8px;
+}
+
+.empty-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.empty-sub {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+/* New Post Form */
+.portal-new-post-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.post-form-heading {
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.post-form-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #00e676;
+}
+
+.post-form-sub {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.post-type-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.btn-post-type {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 6px;
+    border-radius: 12px;
+    background: #090d14;
+    border: 1px solid #1e293b;
+    color: #8b949e;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.type-hint {
+    font-size: 0.62rem;
+    font-weight: normal;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.btn-post-type:hover {
+    border-color: #475569;
+    color: #ffffff;
+}
+
+.btn-post-type.active-lost {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    color: #fca5a5;
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
+}
+
+.btn-post-type.active-lost .type-hint {
+    color: #fca5a5;
+}
+
+.btn-post-type.active-found {
+    background: rgba(0, 230, 118, 0.15);
+    border-color: #00e676;
+    color: #86efac;
+    box-shadow: 0 0 16px rgba(0, 230, 118, 0.35);
+}
+
+.btn-post-type.active-found .type-hint {
+    color: #86efac;
+}
+
+.portal-input-group textarea {
+    background: #090d14;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    color: #ffffff;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    outline: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    resize: vertical;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.portal-input-group textarea:focus {
+    border-color: #00e676;
+    box-shadow: 0 0 14px rgba(0, 230, 118, 0.35);
+}
+
+/* Contact Preview Box in New Post Form */
+.post-ig-preview-box {
+    background: #090d14;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.preview-label {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.preview-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-ig-icon {
+    color: #e1306c;
+}
+
+.preview-ig-info {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.preview-ig-handle {
+    font-size: 0.86rem;
+    font-weight: 800;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.preview-ig-source {
+    font-size: 0.62rem;
+    color: #64748b;
+}
+
+.btn-portal-cancel {
+    width: 100%;
+    background: #141b26;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 10px 0;
+    border-radius: 10px;
+    border: 1px solid #222d3e;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.btn-portal-cancel:hover {
+    color: #ffffff;
+    background: #1e293b;
+}
+
+
+/* ==========================================================================
+   DATABASE VIEWER MODAL STYLING
+   ========================================================================== */
+
+.btn-db-trigger {
+    background: linear-gradient(135deg, rgba(0, 135, 56, 0.85), rgba(30, 41, 59, 0.95)) !important;
+    color: #00e676 !important;
+    border-color: rgba(0, 230, 118, 0.5) !important;
+    margin-right: 8px;
+}
+
+.btn-db-trigger:hover {
+    background: linear-gradient(135deg, #008738, #005a25) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 16px rgba(0, 230, 118, 0.6) !important;
+}
+
+.db-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.db-modal-overlay.active {
+    display: flex;
+}
+
+.db-modal-card {
+    background: #0d121c;
+    border: 1px solid rgba(0, 230, 118, 0.35);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 230, 118, 0.2);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 960px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: #f1f5f9;
+}
+
+.db-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 22px;
+    background: #111726;
+    border-bottom: 1px solid #1e293d;
+}
+
+.db-modal-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #00e676;
+    letter-spacing: 0.5px;
+}
+
+.db-modal-subtitle {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.db-modal-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-db-refresh {
+    background: #1e293b;
+    color: #38bdf8;
+    border: 1px solid #334155;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-db-refresh:hover {
+    background: #334155;
+    color: #ffffff;
+}
+
+.btn-db-close {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: color 0.15s;
+}
+
+.btn-db-close:hover {
+    color: #ffffff;
+}
+
+.db-tabs-bar {
+    display: flex;
+    gap: 6px;
+    padding: 10px 20px;
+    background: #090d15;
+    border-bottom: 1px solid #1e293d;
+}
+
+.db-tab-btn {
+    background: transparent;
+    color: #8b949e;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.db-tab-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.db-tab-btn.active {
+    background: #1e293b;
+    color: #00e676;
+    border-color: #00e676;
+    box-shadow: 0 0 12px rgba(0, 230, 118, 0.25);
+}
+
+.db-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 20px;
+}
+
+.db-table-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.db-table-caption {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.db-table-caption code {
+    color: #00e676;
+    background: rgba(0, 230, 118, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.db-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    text-align: left;
+}
+
+.db-table th {
+    background: #151d2c;
+    color: #94a3b8;
+    padding: 10px 12px;
+    font-weight: 700;
+    border-bottom: 1px solid #243147;
+    white-space: nowrap;
+}
+
+.db-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #1a2333;
+    color: #e2e8f0;
+}
+
+.db-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.db-tag-faculty {
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.db-tag-ig {
+    color: #f472b6;
+    background: rgba(225, 48, 108, 0.12);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    border: 1px solid rgba(225, 48, 108, 0.3);
+}
+
+.db-badge {
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.db-badge-lost {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.db-badge-found {
+    background: rgba(0, 230, 118, 0.2);
+    color: #86efac;
+    border: 1px solid rgba(0, 230, 118, 0.35);
+}
+
+.db-status-tag {
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.status-done {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+
+.status-pending {
+    background: rgba(234, 179, 8, 0.15);
+    color: #fde047;
+}
+
+.db-raw-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.db-raw-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.btn-copy-json {
+    background: #1e293b;
+    color: #f1f5f9;
+    border: 1px solid #334155;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.btn-copy-json:hover {
+    background: #334155;
+    border-color: #00e676;
+}
+
+.db-json-view {
+    background: #06090e;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: #38bdf8;
+    overflow-x: auto;
+    max-height: 55vh;
+}
+
+.db-loading, .db-empty, .db-error {
+    text-align: center;
+    padding: 40px 20px;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.db-error {
+    color: #f87171;
+}
+
+.db-modal-footer {
+    padding: 10px 22px;
+    background: #090d15;
+    border-top: 1px solid #1e293b;
+    font-size: 0.68rem;
+    color: #64748b;
+    display: flex;
+    justify-content: space-between;
+}

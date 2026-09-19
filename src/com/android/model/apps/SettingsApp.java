@@ -1,0 +1,82 @@
+package com.android.model.apps;
+
+import com.android.model.AndroidPhone;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Concrete Android application for System Settings.
+ * Demonstrates OOP:
+ *  - Inheritance: extends AndroidApplication
+ *  - Hardware manipulation through phone encapsulation
+ */
+public class SettingsApp extends AndroidApplication {
+    private final AndroidPhone phone;
+
+    public SettingsApp(AndroidPhone phone) {
+        super("com.android.settings", "Settings", "settings", "15.0.0", 30);
+        this.phone = phone;
+    }
+
+    @Override
+    public ActionResult executeAction(String action, Map<String, Object> params) {
+        if ("TOGGLE_WIFI".equalsIgnoreCase(action)) {
+            phone.getNetworkAdapter().toggleWifi();
+            boolean wifi = phone.getNetworkAdapter().isWifiEnabled();
+            phone.getOs().getNotificationManager().postNotification(
+                "Network Status",
+                "Wi-Fi is now " + (wifi ? "Connected" : "Disconnected"),
+                "Settings"
+            );
+            return new ActionResult(true, "Wi-Fi toggled", wifi);
+
+        } else if ("TOGGLE_CELLULAR".equalsIgnoreCase(action)) {
+            phone.getNetworkAdapter().toggleCellular();
+            boolean cell = phone.getNetworkAdapter().isCellularEnabled();
+            return new ActionResult(true, "Cellular toggled", cell);
+
+        } else if ("SET_BRIGHTNESS".equalsIgnoreCase(action)) {
+            if (params != null && params.containsKey("brightness")) {
+                int b = Integer.parseInt(params.get("brightness").toString());
+                phone.getDisplay().setBrightness(b);
+                return new ActionResult(true, "Brightness set to " + b + "%", b);
+            }
+        } else if ("SET_VOLUME".equalsIgnoreCase(action)) {
+            if (params != null && params.containsKey("volume")) {
+                int v = Integer.parseInt(params.get("volume").toString());
+                phone.setVolume(v);
+                return new ActionResult(true, "Volume set to " + v + "%", v);
+            }
+        } else if ("CHARGE_BATTERY".equalsIgnoreCase(action)) {
+            int amount = (params != null && params.containsKey("amount")) ? Integer.parseInt(params.get("amount").toString()) : 15;
+            phone.getBattery().charge(amount);
+            phone.getOs().getNotificationManager().postNotification(
+                "Charging",
+                "Battery charged +" + amount + "%. Current: " + phone.getBattery().getLevel() + "%",
+                "System Power"
+            );
+            return new ActionResult(true, "Battery charged +" + amount + "%", phone.getBattery().getLevel());
+        }
+        return new ActionResult(false, "Unknown action for SettingsApp: " + action, null);
+    }
+
+    @Override
+    public Object getAppData() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("wifiEnabled", phone.getNetworkAdapter().isWifiEnabled());
+        data.put("cellularEnabled", phone.getNetworkAdapter().isCellularEnabled());
+        data.put("brightness", phone.getDisplay().getBrightness());
+        data.put("volume", phone.getVolume());
+        data.put("androidVersion", phone.getOs().getVersionName());
+        data.put("apiLevel", phone.getOs().getApiLevel());
+        data.put("kernel", phone.getOs().getKernelVersion());
+        data.put("model", phone.getModel());
+        data.put("brand", phone.getBrand());
+        data.put("serialNumber", phone.getSerialNumber());
+        data.put("storageTotalMb", phone.getStorage().getTotalCapacityMb());
+        data.put("storageUsedMb", phone.getStorage().getUsedCapacityMb());
+        data.put("batteryMah", phone.getBattery().getCapacityMah());
+        data.put("batteryLevel", "100% ∞ (ไม่จำกัด)");
+        return data;
+    }
+}
