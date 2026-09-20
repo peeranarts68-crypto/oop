@@ -4,6 +4,7 @@ let calcBuffer = "0";
 
 // Start automatic state polling
 document.addEventListener("DOMContentLoaded", () => {
+    initFirebase();
     updateClock();
     setInterval(updateClock, 1000);
     fetchPhoneState();
@@ -21,6 +22,106 @@ function updateClock() {
 
     const homeClock = document.getElementById("homeClock");
     if (homeClock) homeClock.textContent = timeStr;
+}
+
+// ============================================================================
+// FIREBASE CLOUD FIRESTORE INTEGRATION
+// ============================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCR9qeghYUq1ozrNzFlEX4SodgH1K466PI",
+  authDomain: "projectoop-28c8a.firebaseapp.com",
+  projectId: "projectoop-28c8a",
+  storageBucket: "projectoop-28c8a.firebasestorage.app",
+  messagingSenderId: "837180086007",
+  appId: "1:837180086007:web:781bc97b3dffc4ead1a5f2",
+  measurementId: "G-PJHKYHCG6B"
+};
+
+let firestoreDb = null;
+let isFirebaseOnline = false;
+
+function initFirebase() {
+    try {
+        if (typeof firebase !== 'undefined') {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            firestoreDb = firebase.firestore();
+            isFirebaseOnline = true;
+            console.log("🔥 Firebase Cloud Firestore connected! (projectoop-28c8a)");
+            showCloudIndicator();
+            setupFirestoreRealtimeListener();
+            seedDefaultUserToFirestore();
+        }
+    } catch (err) {
+        console.warn("Firebase init warning:", err);
+    }
+}
+
+async function seedDefaultUserToFirestore() {
+    if (!firestoreDb) return;
+    try {
+        const userDoc = await firestoreDb.collection("users").doc("6812247050").get();
+        if (!userDoc.exists) {
+            await firestoreDb.collection("users").doc("6812247050").set(SIM_DEFAULT_USERS[0]);
+            console.log("🔥 Seeded user 6812247050 to Firestore");
+        }
+    } catch (e) {
+        console.warn("Firestore seed user check:", e);
+    }
+}
+
+function setupFirestoreRealtimeListener() {
+    if (!firestoreDb) return;
+    firestoreDb.collection("posts").onSnapshot(snapshot => {
+        const cloudPosts = [];
+        snapshot.forEach(doc => {
+            cloudPosts.push(doc.data());
+        });
+        if (cloudPosts.length > 0) {
+            cloudPosts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            simPosts = cloudPosts;
+            saveSimPosts();
+            if (clientSimState && clientSimState.runningApp && clientSimState.runningApp.appData) {
+                clientSimState.runningApp.appData.posts = simPosts;
+                renderPhoneUI(clientSimState);
+            }
+            if (currentDatabaseData) {
+                currentDatabaseData.posts = simPosts;
+                const pCount = document.getElementById("dbPostsCount");
+                if (pCount) pCount.textContent = simPosts.length;
+                if (currentDbTab === 'posts') renderDatabaseTabContent();
+            }
+        }
+    }, err => {
+        console.warn("Firestore posts onSnapshot:", err);
+    });
+
+    firestoreDb.collection("users").onSnapshot(snapshot => {
+        const cloudUsers = [];
+        snapshot.forEach(doc => {
+            cloudUsers.push(doc.data());
+        });
+        if (cloudUsers.length > 0) {
+            simUsers = cloudUsers;
+            saveSimUsers();
+            if (currentDatabaseData) {
+                currentDatabaseData.users = simUsers.map(u => ({
+                    studentId: u.studentId,
+                    fullName: u.fullName,
+                    faculty: u.faculty,
+                    instagram: u.instagram,
+                    hasProfilePhoto: !!u.profileImage,
+                    registeredAt: u.registeredAt
+                }));
+                const uCount = document.getElementById("dbUsersCount");
+                if (uCount) uCount.textContent = simUsers.length;
+                if (currentDbTab === 'users') renderDatabaseTabContent();
+            }
+        }
+    }, err => {
+        console.warn("Firestore users onSnapshot:", err);
+    });
 }
 
 // Standalone Cloud / Offline Mode Simulation Support (e.g. Vercel)
@@ -103,16 +204,17 @@ function saveSimPosts() {
 }
 
 function showCloudIndicator() {
-    if (document.getElementById("cloudSimBadge")) return;
     const controls = document.querySelector(".floating-controls");
-    if (controls) {
-        const badge = document.createElement("div");
+    if (!controls) return;
+    let badge = document.getElementById("cloudSimBadge");
+    if (!badge) {
+        badge = document.createElement("div");
         badge.id = "cloudSimBadge";
         badge.className = "cloud-sim-badge";
-        badge.innerHTML = "☁️ Cloud Standalone Mode";
-        badge.title = "กำลังทำงานในโหมด Standalone บน Cloud (หากเปิดพร้อม Java Server บน localhost:8088 จะเชื่อมต่อ Real JVM Backend อัตโนมัติ)";
         controls.prepend(badge);
     }
+    badge.innerHTML = "🔥 Firebase Cloud Connected";
+    badge.title = "เชื่อมต่อฐานข้อมูล Google Cloud Firestore สำเร็จ (Project: projectoop-28c8a)";
 }
 
 function hideCloudIndicator() {
@@ -233,6 +335,9 @@ function executeSimAction(action, params) {
             };
             simUsers.push(newUser);
             saveSimUsers();
+            if (firestoreDb) {
+                firestoreDb.collection("users").doc(newUser.studentId).set(newUser).catch(e => console.warn("Firestore user sync:", e));
+            }
             appData.isLoggedIn = true;
             appData.currentUser = newUser;
             return { success: true, message: "ลงทะเบียนสำเร็จ", data: { user: newUser } };
@@ -261,6 +366,9 @@ function executeSimAction(action, params) {
             };
             simPosts.unshift(newPost);
             saveSimPosts();
+            if (firestoreDb) {
+                firestoreDb.collection("posts").doc(newPost.id).set(newPost).catch(e => console.warn("Firestore post sync:", e));
+            }
             appData.posts = simPosts;
             clientSimState.notifications.unshift({
                 title: (newPost.type === 'LOST' ? '🔴 ตามหา: ' : '🟢 พบของ: ') + newPost.title,
@@ -275,6 +383,9 @@ function executeSimAction(action, params) {
             if (post) {
                 post.status = "RESOLVED";
                 saveSimPosts();
+                if (firestoreDb) {
+                    firestoreDb.collection("posts").doc(params.itemId).update({ status: "RESOLVED" }).catch(e => console.warn("Firestore resolve sync:", e));
+                }
                 appData.posts = simPosts;
                 return { success: true, message: "ปรับสถานะเรียบร้อยแล้ว" };
             }
@@ -283,6 +394,9 @@ function executeSimAction(action, params) {
         case "DELETE_POST": {
             simPosts = simPosts.filter(p => p.id !== params.itemId);
             saveSimPosts();
+            if (firestoreDb) {
+                firestoreDb.collection("posts").doc(params.itemId).delete().catch(e => console.warn("Firestore delete sync:", e));
+            }
             appData.posts = simPosts;
             return { success: true, message: "ลบประกาศเรียบร้อยแล้ว" };
         }
@@ -291,6 +405,12 @@ function executeSimAction(action, params) {
                 if (params.instagram !== undefined) appData.currentUser.instagram = params.instagram;
                 if (params.profileImage !== undefined) appData.currentUser.profileImage = params.profileImage;
                 saveSimUsers();
+                if (firestoreDb) {
+                    firestoreDb.collection("users").doc(appData.currentUser.studentId).update({
+                        instagram: appData.currentUser.instagram,
+                        profileImage: appData.currentUser.profileImage
+                    }).catch(e => console.warn("Firestore profile sync:", e));
+                }
             }
             return { success: true, message: "อัปเดตโปรไฟล์เรียบร้อยแล้ว" };
         }
@@ -1603,8 +1723,27 @@ async function sendAppAction(action, params) {
             body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error("HTTP " + res.status);
+        const jsonResult = await res.json();
+        
+        // Also replicate to Firebase Cloud Firestore for real-time multi-device sync
+        if (firestoreDb && jsonResult.success) {
+            try {
+                if (action === "CREATE_POST" && jsonResult.data && jsonResult.data.post) {
+                    firestoreDb.collection("posts").doc(jsonResult.data.post.id).set(jsonResult.data.post);
+                } else if (action === "RESOLVE_POST" && params.itemId) {
+                    firestoreDb.collection("posts").doc(params.itemId).update({ status: "RESOLVED" });
+                } else if (action === "DELETE_POST" && params.itemId) {
+                    firestoreDb.collection("posts").doc(params.itemId).delete();
+                } else if (action === "REGISTER" && jsonResult.data && jsonResult.data.user) {
+                    firestoreDb.collection("users").doc(jsonResult.data.user.studentId).set(jsonResult.data.user);
+                }
+            } catch (e) {
+                console.warn("Firebase shadow sync error:", e);
+            }
+        }
+        
         fetchPhoneState();
-        return await res.json();
+        return jsonResult;
     } catch (err) {
         isOfflineMode = true;
         if (!clientSimState) enableClientSimulation();
