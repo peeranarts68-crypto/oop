@@ -1,3 +1,55 @@
+// Default System Installed Applications
+const DEFAULT_INSTALLED_APPS = [
+    {
+        appId: "com.psru.lostfound",
+        appName: "PSRU Lost & Found",
+        icon: "psru",
+        version: "1.0.0",
+        sizeMb: 38,
+        state: "STOPPED"
+    },
+    {
+        appId: "com.android.settings",
+        appName: "การตั้งค่า",
+        icon: "settings",
+        version: "15.0.0",
+        sizeMb: 30,
+        state: "STOPPED"
+    },
+    {
+        appId: "com.android.dialer",
+        appName: "โทรศัพท์",
+        icon: "phone",
+        version: "1.0.0",
+        sizeMb: 12,
+        state: "STOPPED"
+    },
+    {
+        appId: "com.android.camera",
+        appName: "กล้องถ่ายรูป",
+        icon: "camera",
+        version: "1.0.0",
+        sizeMb: 24,
+        state: "STOPPED"
+    },
+    {
+        appId: "com.android.calc",
+        appName: "เครื่องคิดเลข",
+        icon: "calc",
+        version: "1.0.0",
+        sizeMb: 8,
+        state: "STOPPED"
+    },
+    {
+        appId: "com.android.notes",
+        appName: "สมุดบันทึก",
+        icon: "note",
+        version: "1.0.0",
+        sizeMb: 15,
+        state: "STOPPED"
+    }
+];
+
 let currentPhoneState = null;
 let dialBuffer = "";
 let calcBuffer = "0";
@@ -276,6 +328,7 @@ function enableClientSimulation() {
                 timestamp: Date.now()
             }
         ],
+        installedApps: DEFAULT_INSTALLED_APPS,
         runningApp: {
             appId: "com.psru.lostfound",
             appName: "PSRU Lost & Found",
@@ -518,15 +571,28 @@ function renderPhoneUI(state) {
     }
 }
 
+function getCombinedApps(apps) {
+    const list = [...(apps || [])];
+    const existingIds = new Set(list.map(a => a.appId));
+    DEFAULT_INSTALLED_APPS.forEach(defApp => {
+        if (!existingIds.has(defApp.appId)) {
+            list.push(defApp);
+        }
+    });
+    return list;
+}
+
 let lastRenderedAppsJson = "";
 
 // Render Installed Apps in Launcher
 function renderAppsGrid(apps) {
-    const appsJson = JSON.stringify((apps || []).map(a => a.appId + a.appName));
+    const effectiveApps = getCombinedApps(apps);
+    const appsJson = JSON.stringify(effectiveApps.map(a => a.appId + a.appName));
     if (appsJson === lastRenderedAppsJson) return;
     lastRenderedAppsJson = appsJson;
 
     const grid = document.getElementById("appsGrid");
+    if (!grid) return;
     grid.innerHTML = "";
 
     const iconClasses = {
@@ -545,7 +611,7 @@ function renderAppsGrid(apps) {
         "settings": "⚙️"
     };
 
-    apps.forEach(app => {
+    effectiveApps.forEach(app => {
         const item = document.createElement("div");
         item.className = "app-icon-item";
         item.onclick = () => launchApp(app.appId);
@@ -553,7 +619,7 @@ function renderAppsGrid(apps) {
         const circle = document.createElement("div");
         if (app.icon === "psru") {
             circle.className = "app-icon-circle icon-psru-wrapper";
-            circle.innerHTML = `<img src="psru_icon.jpg" alt="PSRU Lost&Found" class="app-icon-img" />`;
+            circle.innerHTML = `<img src="psru_icon.jpg" onerror="this.onerror=null; this.src='web/psru_icon.jpg'; this.onerror=function(){this.parentElement.innerHTML='🎒';};" alt="PSRU Lost&Found" class="app-icon-img" />`;
         } else {
             circle.className = `app-icon-circle ${iconClasses[app.icon] || 'icon-settings'}`;
             circle.textContent = emojis[app.icon] || "📱";
@@ -677,6 +743,14 @@ function renderActiveApp(app) {
         bodyEl.innerHTML = renderSettingsAppHtml(data);
     } else if (appId === "com.psru.lostfound") {
         bodyEl.innerHTML = renderPsruAppHtml(data);
+    } else if (appId === "com.android.dialer") {
+        bodyEl.innerHTML = renderDialerAppHtml();
+    } else if (appId === "com.android.camera") {
+        bodyEl.innerHTML = renderCameraAppHtml();
+    } else if (appId === "com.android.calc") {
+        bodyEl.innerHTML = renderCalcAppHtml();
+    } else if (appId === "com.android.notes") {
+        bodyEl.innerHTML = renderNotesAppHtml();
     } else {
         bodyEl.innerHTML = `<div style="padding:20px; text-align:center;">App running: ${app.appName}</div>`;
     }
@@ -1698,7 +1772,7 @@ async function launchApp(appId) {
         } else if (appId === "com.android.settings") {
             clientSimState.runningApp = {
                 appId: "com.android.settings",
-                appName: "Settings",
+                appName: "การตั้งค่า (Settings)",
                 state: "RESUMED",
                 appData: {
                     brand: "Google / PSRU",
@@ -1708,16 +1782,62 @@ async function launchApp(appId) {
                     kernel: "6.1.75-android15-g1234",
                     serialNumber: "SN-6812247050",
                     batteryMah: 5000,
-                    batteryLevel: 100,
-                    brightness: clientSimState.display.brightness || 85,
-                    volume: clientSimState.device.volume || 80,
+                    batteryLevel: (clientSimState.battery && clientSimState.battery.level) || 100,
+                    brightness: (clientSimState.display && clientSimState.display.brightness) || 85,
+                    volume: (clientSimState.device && clientSimState.device.volume) || 80,
                     wifiEnabled: true,
                     cellularEnabled: true
                 }
             };
+        } else if (appId === "com.android.dialer") {
+            clientSimState.runningApp = {
+                appId: "com.android.dialer",
+                appName: "โทรศัพท์ (Phone)",
+                state: "RESUMED",
+                appData: {}
+            };
+        } else if (appId === "com.android.camera") {
+            clientSimState.runningApp = {
+                appId: "com.android.camera",
+                appName: "กล้องถ่ายรูป (Camera)",
+                state: "RESUMED",
+                appData: {}
+            };
+        } else if (appId === "com.android.calc") {
+            clientSimState.runningApp = {
+                appId: "com.android.calc",
+                appName: "เครื่องคิดเลข (Calculator)",
+                state: "RESUMED",
+                appData: {}
+            };
+        } else if (appId === "com.android.notes") {
+            clientSimState.runningApp = {
+                appId: "com.android.notes",
+                appName: "สมุดบันทึก (Notes)",
+                state: "RESUMED",
+                appData: {}
+            };
         }
         renderPhoneUI(clientSimState);
         renderInspector(clientSimState);
+        return;
+    }
+    if (appId === "com.android.dialer" || appId === "com.android.camera" || appId === "com.android.calc" || appId === "com.android.notes") {
+        const appNames = {
+            "com.android.dialer": "โทรศัพท์ (Phone)",
+            "com.android.camera": "กล้องถ่ายรูป (Camera)",
+            "com.android.calc": "เครื่องคิดเลข (Calculator)",
+            "com.android.notes": "สมุดบันทึก (Notes)"
+        };
+        const appObj = {
+            appId: appId,
+            appName: appNames[appId] || "App",
+            state: "RESUMED",
+            appData: {}
+        };
+        if (currentPhoneState) currentPhoneState.runningApp = appObj;
+        if (clientSimState) clientSimState.runningApp = appObj;
+        renderPhoneUI(currentPhoneState || clientSimState);
         return;
     }
     try {
@@ -2075,5 +2195,248 @@ function renderDatabaseTabContent() {
                 <pre class="db-json-view">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
             </div>
         `;
+    }
+}
+
+
+// ============================================================================
+// SYSTEM UTILITY APPS (DIALER, CAMERA, CALCULATOR, NOTES)
+// ============================================================================
+
+// 1. DIALER APP
+function renderDialerAppHtml() {
+    return `
+        <div class="dialer-screen">
+            <div class="dialer-display" id="dialDisplay">${dialBuffer || '<span style="color:#64748b; font-size:1.1rem; font-weight:normal;">กดเบอร์โทรศัพท์...</span>'}</div>
+            <div class="dialpad-grid">
+                <button class="dial-key" onclick="pressDialDigit('1')">1<span class="sub">&nbsp;</span></button>
+                <button class="dial-key" onclick="pressDialDigit('2')">2<span class="sub">ABC</span></button>
+                <button class="dial-key" onclick="pressDialDigit('3')">3<span class="sub">DEF</span></button>
+                <button class="dial-key" onclick="pressDialDigit('4')">4<span class="sub">GHI</span></button>
+                <button class="dial-key" onclick="pressDialDigit('5')">5<span class="sub">JKL</span></button>
+                <button class="dial-key" onclick="pressDialDigit('6')">6<span class="sub">MNO</span></button>
+                <button class="dial-key" onclick="pressDialDigit('7')">7<span class="sub">PQRS</span></button>
+                <button class="dial-key" onclick="pressDialDigit('8')">8<span class="sub">TUV</span></button>
+                <button class="dial-key" onclick="pressDialDigit('9')">9<span class="sub">WXYZ</span></button>
+                <button class="dial-key" onclick="pressDialDigit('*')">*<span class="sub">&nbsp;</span></button>
+                <button class="dial-key" onclick="pressDialDigit('0')">0<span class="sub">+</span></button>
+                <button class="dial-key" onclick="pressDialDigit('#')">#<span class="sub">&nbsp;</span></button>
+            </div>
+            <div class="dial-actions">
+                <button onclick="clearDialDigit()" style="background:none; border:none; color:#94a3b8; font-size:1.3rem; cursor:pointer; padding:10px;">⌫</button>
+                <button class="call-btn" onclick="executeDialCall()">📞</button>
+            </div>
+            <div class="call-history-box" style="margin-top:10px; text-align:center; color:#94a3b8;">
+                เบอร์ฉุกเฉิน มรภ.พิบูลสงคราม: <strong style="color:#38bdf8;">055-267000</strong>
+            </div>
+        </div>
+    `;
+}
+
+function pressDialDigit(d) {
+    dialBuffer += d;
+    const el = document.getElementById("dialDisplay");
+    if (el) el.textContent = dialBuffer;
+}
+
+function clearDialDigit() {
+    dialBuffer = dialBuffer.slice(0, -1);
+    const el = document.getElementById("dialDisplay");
+    if (el) {
+        el.innerHTML = dialBuffer || '<span style="color:#64748b; font-size:1.1rem; font-weight:normal;">กดเบอร์โทรศัพท์...</span>';
+    }
+}
+
+function executeDialCall() {
+    if (!dialBuffer) {
+        alert("กรุณากดหมายเลขโทรศัพท์ก่อนโทรออก");
+        return;
+    }
+    const notif = {
+        title: "กำลังโทรออก: " + dialBuffer,
+        message: "การโทรเชื่อมต่อสำเร็จผ่านเครือข่าย Wi-Fi Calling",
+        appSource: "Dialer",
+        timestamp: Date.now()
+    };
+    if (clientSimState) {
+        clientSimState.notifications.unshift(notif);
+        renderPhoneUI(clientSimState);
+    }
+    alert("📞 กำลังโทรออกไปยัง " + dialBuffer + " ...");
+}
+
+// 2. CAMERA APP
+let currentCameraSubject = "🎒";
+const cameraSubjects = ["🎒", "📱", "💳", "🔑", "🎧", "💻", "⌚"];
+
+function renderCameraAppHtml() {
+    return `
+        <div style="display:flex; flex-direction:column; height:100%; justify-content:space-between;">
+            <div class="camera-viewfinder" id="cameraViewfinder">
+                <div class="viewfinder-grid">
+                    <div class="grid-line"></div><div class="grid-line"></div><div></div>
+                    <div class="grid-line"></div><div class="grid-line"></div><div></div>
+                </div>
+                <div class="animated-camera-subject" id="cameraSubject">${currentCameraSubject}</div>
+                <div class="flash-screen" id="cameraFlash"></div>
+            </div>
+            <div style="text-align:center; font-size:0.75rem; color:#94a3b8; margin-top:8px;">
+                มุมมองกล้อง 4K HDR • ถ่ายภาพสิ่งของเพื่อลงประกาศของหาย
+            </div>
+            <div class="camera-controls">
+                <div class="camera-preview-thumb" id="cameraThumb">🖼️</div>
+                <button class="shutter-btn" onclick="takeCameraSnapshot()"></button>
+                <button onclick="switchCameraSubject()" style="background:#1e293b; border:1px solid #334155; color:#fff; width:44px; height:44px; border-radius:50%; font-size:1.1rem; cursor:pointer;" title="เปลี่ยนวัตถุ">🔄</button>
+            </div>
+        </div>
+    `;
+}
+
+function switchCameraSubject() {
+    const nextIdx = (cameraSubjects.indexOf(currentCameraSubject) + 1) % cameraSubjects.length;
+    currentCameraSubject = cameraSubjects[nextIdx];
+    const el = document.getElementById("cameraSubject");
+    if (el) el.textContent = currentCameraSubject;
+}
+
+function takeCameraSnapshot() {
+    const flash = document.getElementById("cameraFlash");
+    if (flash) {
+        flash.style.opacity = "0.8";
+        setTimeout(() => { flash.style.opacity = "0"; }, 150);
+    }
+    const notif = {
+        title: "📸 ถ่ายภาพสิ่งของสำเร็จ",
+        message: "บันทึกภาพ " + currentCameraSubject + " ลงหน่วยความจำเครื่องสมาร์ตโฟนแล้ว",
+        appSource: "Camera",
+        timestamp: Date.now()
+    };
+    if (clientSimState) {
+        clientSimState.notifications.unshift(notif);
+        renderPhoneUI(clientSimState);
+    }
+    const thumb = document.getElementById("cameraThumb");
+    if (thumb) thumb.textContent = currentCameraSubject;
+}
+
+// 3. CALCULATOR APP
+function renderCalcAppHtml() {
+    return `
+        <div style="display:flex; flex-direction:column; height:100%;">
+            <div class="calc-display">
+                <div class="calc-expr" id="calcExprDisplay">&nbsp;</div>
+                <div class="calc-res" id="calcResultDisplay">${calcBuffer || '0'}</div>
+            </div>
+            <div class="calc-grid">
+                <button class="calc-btn" style="color:#ef4444;" onclick="pressCalcKey('C')">C</button>
+                <button class="calc-btn" style="color:#38bdf8;" onclick="pressCalcKey('(')">(</button>
+                <button class="calc-btn" style="color:#38bdf8;" onclick="pressCalcKey(')')">)</button>
+                <button class="calc-btn" style="color:#f59e0b;" onclick="pressCalcKey('/')">÷</button>
+
+                <button class="calc-btn" onclick="pressCalcKey('7')">7</button>
+                <button class="calc-btn" onclick="pressCalcKey('8')">8</button>
+                <button class="calc-btn" onclick="pressCalcKey('9')">9</button>
+                <button class="calc-btn" style="color:#f59e0b;" onclick="pressCalcKey('*')">×</button>
+
+                <button class="calc-btn" onclick="pressCalcKey('4')">4</button>
+                <button class="calc-btn" onclick="pressCalcKey('5')">5</button>
+                <button class="calc-btn" onclick="pressCalcKey('6')">6</button>
+                <button class="calc-btn" style="color:#f59e0b;" onclick="pressCalcKey('-')">-</button>
+
+                <button class="calc-btn" onclick="pressCalcKey('1')">1</button>
+                <button class="calc-btn" onclick="pressCalcKey('2')">2</button>
+                <button class="calc-btn" onclick="pressCalcKey('3')">3</button>
+                <button class="calc-btn" style="color:#f59e0b;" onclick="pressCalcKey('+')">+</button>
+
+                <button class="calc-btn" style="grid-column: span 2;" onclick="pressCalcKey('0')">0</button>
+                <button class="calc-btn" onclick="pressCalcKey('.')">.</button>
+                <button class="calc-btn" style="background:#00e676; color:#000; font-weight:700;" onclick="pressCalcKey('=')">=</button>
+            </div>
+        </div>
+    `;
+}
+
+function pressCalcKey(key) {
+    const resEl = document.getElementById("calcResultDisplay");
+    const exprEl = document.getElementById("calcExprDisplay");
+
+    if (key === 'C') {
+        calcBuffer = "0";
+        if (exprEl) exprEl.innerHTML = "&nbsp;";
+    } else if (key === '=') {
+        try {
+            const cleanExpr = calcBuffer.replace(/×/g, '*').replace(/÷/g, '/');
+            // Safe evaluation using simple Function
+            const result = Function('"use strict";return (' + cleanExpr + ')')();
+            if (exprEl) exprEl.textContent = calcBuffer + " =";
+            calcBuffer = String(result);
+        } catch(e) {
+            calcBuffer = "Error";
+        }
+    } else {
+        if (calcBuffer === "0" || calcBuffer === "Error") {
+            calcBuffer = key;
+        } else {
+            calcBuffer += key;
+        }
+    }
+    if (resEl) resEl.textContent = calcBuffer;
+}
+
+// 4. NOTES APP
+function renderNotesAppHtml() {
+    const savedNotes = JSON.parse(localStorage.getItem("psru_notes") || "[]");
+    return `
+        <div style="display:flex; flex-direction:column; height:100%;">
+            <div class="note-input-box">
+                <input type="text" id="noteTitleInput" placeholder="หัวข้อโน้ต เช่น ข้อมูลสิ่งของที่หาย..." />
+                <textarea id="noteContentInput" rows="3" placeholder="รายละเอียดบันทึกช่วยจำ..."></textarea>
+                <button class="btn-portal-submit" onclick="handleSaveNote()" style="padding:8px 0; font-size:0.75rem;">
+                    ➕ บันทึกโน้ตใหม่
+                </button>
+            </div>
+            <div class="notes-list" id="notesList" style="max-height:220px; overflow-y:auto;">
+                ${savedNotes.length === 0 ? '<div style="text-align:center; color:#64748b; font-size:0.75rem; padding:20px;">ยังไม่มีบันทึกช่วยจำ</div>' : 
+                    savedNotes.map((n, idx) => `
+                        <div class="note-card">
+                            <div>
+                                <div class="note-card-title">${escapeHtml(n.title)}</div>
+                                <div class="note-card-body">${escapeHtml(n.body)}</div>
+                            </div>
+                            <button onclick="handleDeleteNote(${idx})" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.9rem; padding:4px;">✕</button>
+                        </div>
+                    `).join('')
+                }
+            </div>
+        </div>
+    `;
+}
+
+function handleSaveNote() {
+    const titleEl = document.getElementById("noteTitleInput");
+    const contentEl = document.getElementById("noteContentInput");
+    if (!titleEl || !contentEl) return;
+    const title = titleEl.value.trim();
+    const body = contentEl.value.trim();
+    if (!title) {
+        alert("กรุณากรอกหัวข้อโน้ต");
+        return;
+    }
+    const notes = JSON.parse(localStorage.getItem("psru_notes") || "[]");
+    notes.unshift({ title, body, date: Date.now() });
+    localStorage.setItem("psru_notes", JSON.stringify(notes));
+    lastRenderedAppKey = "";
+    if (clientSimState && clientSimState.runningApp) {
+        renderActiveApp(clientSimState.runningApp);
+    }
+}
+
+function handleDeleteNote(idx) {
+    const notes = JSON.parse(localStorage.getItem("psru_notes") || "[]");
+    notes.splice(idx, 1);
+    localStorage.setItem("psru_notes", JSON.stringify(notes));
+    lastRenderedAppKey = "";
+    if (clientSimState && clientSimState.runningApp) {
+        renderActiveApp(clientSimState.runningApp);
     }
 }
