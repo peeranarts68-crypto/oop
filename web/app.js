@@ -279,8 +279,8 @@ function enableClientSimulation() {
             appName: "PSRU Lost & Found",
             state: "RESUMED",
             appData: {
-                isLoggedIn: true,
-                currentUser: currentUser,
+                isLoggedIn: false,
+                currentUser: null,
                 posts: simPosts
             }
         }
@@ -301,7 +301,7 @@ function executeSimAction(action, params) {
             appId: "com.psru.lostfound",
             appName: "PSRU Lost & Found",
             state: "RESUMED",
-            appData: { isLoggedIn: true, currentUser: simUsers[0], posts: simPosts }
+            appData: { isLoggedIn: false, currentUser: null, posts: simPosts }
         };
     }
     const appData = clientSimState.runningApp.appData;
@@ -1260,8 +1260,20 @@ function renderPsruLoginForm() {
             </div>
 
             <button class="btn-portal-submit" onclick="handlePsruLogin()">
-                LOGIN
+                LOGIN (เข้าสู่ระบบ)
             </button>
+
+            <div style="margin-top: 14px; text-align: center; font-size: 0.76rem; color: #94a3b8;">
+                ยังไม่มีบัญชีผู้ใช้งานใช่หรือไม่? 
+                <a href="javascript:void(0)" onclick="setPsruAuthTab('REGISTER')" style="color: #38bdf8; font-weight: 600; text-decoration: underline;">สมัครสมาชิกที่นี่</a>
+            </div>
+
+            <div style="margin-top: 12px; padding: 8px 10px; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.3); border-radius: 8px; font-size: 0.72rem; color: #cbd5e1; text-align: center;">
+                💡 บัญชีเริ่มต้น: รหัส <code>6812247050</code> | รหัสผ่าน <code>123456</code><br/>
+                <button type="button" onclick="document.getElementById('loginStudentId').value='6812247050'; document.getElementById('loginPassword').value='123456'; formDraft.loginStudentId='6812247050'; formDraft.loginPassword='123456';" style="margin-top: 5px; padding: 2px 8px; font-size: 0.68rem; background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8; border-radius: 4px; cursor: pointer;">
+                    ⚡ ใส่รหัสทดสอบอัตโนมัติ
+                </button>
+            </div>
         </div>
     `;
 }
@@ -1340,8 +1352,13 @@ function renderPsruRegisterForm() {
             </div>
 
             <button class="btn-portal-submit" onclick="handlePsruRegister()">
-                REGISTER
+                REGISTER (ยืนยันการสมัครสมาชิก)
             </button>
+
+            <div style="margin-top: 14px; text-align: center; font-size: 0.76rem; color: #94a3b8;">
+                มีบัญชีอยู่แล้วใช่หรือไม่? 
+                <a href="javascript:void(0)" onclick="setPsruAuthTab('LOGIN')" style="color: #38bdf8; font-weight: 600; text-decoration: underline;">เข้าสู่ระบบที่นี่</a>
+            </div>
         </div>
     `;
 }
@@ -1356,13 +1373,34 @@ async function handlePsruLogin() {
     pulsePillar('pillarPolymorphism');
     pulsePillar('pillarEncapsulation');
 
-    const res = await sendAppAction("LOGIN", { studentId, password });
+    let res = await sendAppAction("LOGIN", { studentId, password });
+
+    // If local/backend check fails, check directly in Firestore if available
+    if (!res.success && firestoreDb) {
+        try {
+            const doc = await firestoreDb.collection("users").doc(studentId).get();
+            if (doc.exists) {
+                const u = doc.data();
+                if (u.password === password) {
+                    if (!simUsers.some(x => x.studentId === u.studentId)) {
+                        simUsers.push(u);
+                        saveSimUsers();
+                    }
+                    res = await sendAppAction("LOGIN", { studentId, password });
+                }
+            }
+        } catch(e) {
+            console.warn("Firestore login fallback check:", e);
+        }
+    }
+
     if (!res.success) {
-        alert(res.message || "รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง");
+        alert(res.message || "รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง (หากยังไม่มีบัญชี ให้กดแท็บ สมัครสมาชิก)");
     } else {
         // Land directly on FEED screen upon login
         psruUserTab = 'FEED';
         lastRenderedAppKey = "";
+        alert("🎉 เข้าสู่ระบบสำเร็จ ยินดีต้อนรับ!");
     }
     fetchPhoneState();
 }
@@ -1623,13 +1661,14 @@ async function launchApp(appId) {
     pulsePillar('pillarPolymorphism');
     if (isOfflineMode) {
         if (appId === "com.psru.lostfound") {
+            const prevData = (clientSimState.runningApp && clientSimState.runningApp.appData) || {};
             clientSimState.runningApp = {
                 appId: "com.psru.lostfound",
                 appName: "PSRU Lost & Found",
                 state: "RESUMED",
                 appData: {
-                    isLoggedIn: true,
-                    currentUser: simUsers[0],
+                    isLoggedIn: prevData.isLoggedIn === true,
+                    currentUser: prevData.isLoggedIn ? prevData.currentUser : null,
                     posts: simPosts
                 }
             };
