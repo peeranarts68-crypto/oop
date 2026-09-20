@@ -84,6 +84,8 @@ function setupFirestoreRealtimeListener() {
             saveSimPosts();
             if (clientSimState && clientSimState.runningApp && clientSimState.runningApp.appData) {
                 clientSimState.runningApp.appData.posts = simPosts;
+                clientSimState.runningApp.appData.items = simPosts;
+                lastRenderedAppKey = "";
                 renderPhoneUI(clientSimState);
             }
             if (currentDatabaseData) {
@@ -281,6 +283,7 @@ function enableClientSimulation() {
             appData: {
                 isLoggedIn: false,
                 currentUser: null,
+                items: simPosts,
                 posts: simPosts
             }
         }
@@ -301,7 +304,7 @@ function executeSimAction(action, params) {
             appId: "com.psru.lostfound",
             appName: "PSRU Lost & Found",
             state: "RESUMED",
-            appData: { isLoggedIn: false, currentUser: null, posts: simPosts }
+            appData: { isLoggedIn: false, currentUser: null, items: simPosts, posts: simPosts }
         };
     }
     const appData = clientSimState.runningApp.appData;
@@ -370,6 +373,7 @@ function executeSimAction(action, params) {
                 firestoreDb.collection("posts").doc(newPost.id).set(newPost).catch(e => console.warn("Firestore post sync:", e));
             }
             appData.posts = simPosts;
+            appData.items = simPosts;
             clientSimState.notifications.unshift({
                 title: (newPost.type === 'LOST' ? '🔴 ตามหา: ' : '🟢 พบของ: ') + newPost.title,
                 message: newPost.location + " (" + newPost.reporterName + ")",
@@ -387,6 +391,7 @@ function executeSimAction(action, params) {
                     firestoreDb.collection("posts").doc(params.itemId).update({ status: "RESOLVED" }).catch(e => console.warn("Firestore resolve sync:", e));
                 }
                 appData.posts = simPosts;
+                appData.items = simPosts;
                 return { success: true, message: "ปรับสถานะเรียบร้อยแล้ว" };
             }
             return { success: false, message: "ไม่พบประกาศที่ระบุ" };
@@ -398,6 +403,7 @@ function executeSimAction(action, params) {
                 firestoreDb.collection("posts").doc(params.itemId).delete().catch(e => console.warn("Firestore delete sync:", e));
             }
             appData.posts = simPosts;
+            appData.items = simPosts;
             return { success: true, message: "ลบประกาศเรียบร้อยแล้ว" };
         }
         case "UPDATE_PROFILE": {
@@ -680,7 +686,7 @@ function renderActiveApp(app) {
 function renderPsruAppHtml(data) {
     if (data.isLoggedIn && data.currentUser) {
         const user = data.currentUser;
-        const items = data.items || [];
+        const items = (data.items && data.items.length > 0) ? data.items : ((data.posts && data.posts.length > 0) ? data.posts : (simPosts || []));
 
         return `
             <div class="portal-card portal-card-logged-in">
@@ -763,7 +769,7 @@ function renderPsruAppHtml(data) {
 
 // 1. FEED TAB: Render Lost & Found Announcements
 function renderPsruFeedTab(data) {
-    const rawItems = data.items || [];
+    const rawItems = (data.items && data.items.length > 0) ? data.items : ((data.posts && data.posts.length > 0) ? data.posts : (simPosts || []));
     const currentUser = data.currentUser || {};
 
     let filteredItems = rawItems;
@@ -1152,9 +1158,25 @@ async function handleCreatePost() {
         postDraft.photo = '';
         postDraft.category = 'อุปกรณ์อิเล็กทรอนิกส์';
 
-        // Switch to Feed tab to view the newly created post
+        // If newly created post was returned, ensure it is unshifted into simPosts
+        const createdItem = (res.data && res.data.post) ? res.data.post : (res.data || null);
+        if (createdItem && createdItem.id) {
+            if (!simPosts.some(p => p.id === createdItem.id)) {
+                simPosts.unshift(createdItem);
+                saveSimPosts();
+            }
+        }
+
+        // Switch to Feed tab to view the newly created post immediately
         psruUserTab = 'FEED';
         lastRenderedAppKey = "";
+        
+        if (clientSimState && clientSimState.runningApp && clientSimState.runningApp.appData) {
+            clientSimState.runningApp.appData.items = simPosts;
+            clientSimState.runningApp.appData.posts = simPosts;
+            renderPhoneUI(clientSimState);
+        }
+
         alert("🎉 โพสต์ประกาศสำเร็จเรียบร้อยแล้ว!");
     } else {
         alert(res.message || "เกิดข้อผิดพลาดในการโพสต์ประกาศ");
@@ -1669,6 +1691,7 @@ async function launchApp(appId) {
                 appData: {
                     isLoggedIn: prevData.isLoggedIn === true,
                     currentUser: prevData.isLoggedIn ? prevData.currentUser : null,
+                    items: simPosts,
                     posts: simPosts
                 }
             };
@@ -1767,8 +1790,11 @@ async function sendAppAction(action, params) {
         // Also replicate to Firebase Cloud Firestore for real-time multi-device sync
         if (firestoreDb && jsonResult.success) {
             try {
-                if (action === "CREATE_POST" && jsonResult.data && jsonResult.data.post) {
-                    firestoreDb.collection("posts").doc(jsonResult.data.post.id).set(jsonResult.data.post);
+                if (action === "CREATE_POST" && jsonResult.data) {
+                    const postObj = jsonResult.data.post || jsonResult.data;
+                    if (postObj && postObj.id) {
+                        firestoreDb.collection("posts").doc(postObj.id).set(postObj);
+                    }
                 } else if (action === "RESOLVE_POST" && params.itemId) {
                     firestoreDb.collection("posts").doc(params.itemId).update({ status: "RESOLVED" });
                 } else if (action === "DELETE_POST" && params.itemId) {
