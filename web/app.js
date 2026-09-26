@@ -190,6 +190,7 @@ const SIM_DEFAULT_USERS = [
         instagram: "@s.peeranart",
         profileImage: "uploads/profile_user_1789807298340_a924f1.jpg",
         password: "123456",
+        role: "ADMIN",
         registeredAt: 1789807209333
     }
 ];
@@ -197,7 +198,10 @@ const SIM_DEFAULT_USERS = [
 let simUsers = (() => {
     try {
         const stored = localStorage.getItem("psru_sim_users");
-        return stored ? JSON.parse(stored) : SIM_DEFAULT_USERS;
+        const list = stored ? JSON.parse(stored) : SIM_DEFAULT_USERS;
+        const adminUser = list.find(u => u.studentId === "6812247050");
+        if (adminUser) adminUser.role = "ADMIN";
+        return list;
     } catch(e) {
         return SIM_DEFAULT_USERS;
     }
@@ -458,6 +462,65 @@ function executeSimAction(action, params) {
             appData.posts = simPosts;
             appData.items = simPosts;
             return { success: true, message: "ลบประกาศเรียบร้อยแล้ว" };
+        }
+        case "ADMIN_DELETE_USER": {
+            if (params.studentId === '6812247050') {
+                return { success: false, message: "ไม่สามารถลบบัญชี Super Admin ได้" };
+            }
+            simUsers = simUsers.filter(u => u.studentId !== params.studentId);
+            saveSimUsers();
+            if (firestoreDb) {
+                firestoreDb.collection("users").doc(params.studentId).delete().catch(e => console.warn(e));
+            }
+            return { success: true, message: "ลบบัญชีนักศึกษารหัส " + params.studentId + " เรียบร้อยแล้ว" };
+        }
+        case "ADMIN_RESET_PASSWORD": {
+            const target = simUsers.find(u => u.studentId === params.studentId);
+            if (target) {
+                target.password = params.newPassword || "123456";
+                saveSimUsers();
+                if (firestoreDb) {
+                    firestoreDb.collection("users").doc(params.studentId).update({ password: target.password }).catch(e => console.warn(e));
+                }
+                return { success: true, message: "รีเซ็ตรหัสผ่านสำหรับรหัส " + params.studentId + " เป็น " + target.password + " สำเร็จ" };
+            }
+            return { success: false, message: "ไม่พบบัญชีผู้ใช้" };
+        }
+        case "ADMIN_BROADCAST": {
+            const title = params.title || "ประกาศจากแอดมิน";
+            const message = params.message || "";
+            if (!message.trim()) return { success: false, message: "กรุณากรอกข้อความ" };
+            
+            const adminName = (appData.currentUser && appData.currentUser.fullName) || "Super Admin";
+            const notif = {
+                title: "📢 " + title,
+                message: message + " (" + adminName + ")",
+                appSource: "PSRU Admin",
+                timestamp: Date.now()
+            };
+            clientSimState.notifications.unshift(notif);
+            return { success: true, message: "ส่งประกาศด่วนขึ้นระบบสำเร็จ" };
+        }
+        case "ADMIN_PIN_POST": {
+            const idx = simPosts.findIndex(p => p.id === params.itemId);
+            if (idx !== -1) {
+                const item = simPosts.splice(idx, 1)[0];
+                simPosts.unshift(item);
+                saveSimPosts();
+                appData.posts = simPosts;
+                appData.items = simPosts;
+                return { success: true, message: "ปักหมุดประกาศขึ้นบนสุดสำเร็จ" };
+            }
+            return { success: false, message: "ไม่พบประกาศ" };
+        }
+        case "ADMIN_CLEAR_RESOLVED": {
+            const before = simPosts.length;
+            simPosts = simPosts.filter(p => p.status !== 'RESOLVED');
+            const cleared = before - simPosts.length;
+            saveSimPosts();
+            appData.posts = simPosts;
+            appData.items = simPosts;
+            return { success: true, message: "ล้างประกาศที่ส่งคืนแล้วจำนวน " + cleared + " รายการ" };
         }
         case "UPDATE_PROFILE": {
             if (appData.currentUser) {
@@ -773,16 +836,22 @@ function renderPsruAppHtml(data) {
                     <button class="portal-close-btn" onclick="pressHome()">✕</button>
                 </div>
 
-                <!-- Sub Navigation Bar (ฟีดประกาศ | ลงประกาศ | โปรไฟล์) -->
+                <!-- Sub Navigation Bar (ฟีดประกาศ | ลงประกาศ | จัดการระบบ | โปรไฟล์) -->
                 <div class="portal-subnav-bar">
                     <button class="portal-subnav-btn ${psruUserTab === 'FEED' ? 'active' : ''}" onclick="setPsruUserTab('FEED')">
                         <span class="subnav-icon">📋</span>
-                        <span class="subnav-text">ฟีดประกาศ (${items.length})</span>
+                        <span class="subnav-text">ฟีด (${items.length})</span>
                     </button>
                     <button class="portal-subnav-btn ${psruUserTab === 'NEW_POST' ? 'active' : ''}" onclick="setPsruUserTab('NEW_POST')">
                         <span class="subnav-icon">➕</span>
                         <span class="subnav-text">ลงประกาศ</span>
                     </button>
+                    ${(user.role === 'ADMIN' || user.isAdmin === true || user.studentId === '6812247050') ? `
+                    <button class="portal-subnav-btn ${psruUserTab === 'ADMIN' ? 'active' : ''}" onclick="setPsruUserTab('ADMIN')">
+                        <span class="subnav-icon">👑</span>
+                        <span class="subnav-text">จัดการ</span>
+                    </button>
+                    ` : ''}
                     <button class="portal-subnav-btn ${psruUserTab === 'PROFILE' ? 'active' : ''}" onclick="setPsruUserTab('PROFILE')">
                         <span class="subnav-icon">👤</span>
                         <span class="subnav-text">โปรไฟล์</span>
@@ -791,7 +860,7 @@ function renderPsruAppHtml(data) {
 
                 <!-- Tab Content Body -->
                 <div class="portal-tab-content">
-                    ${psruUserTab === 'FEED' ? renderPsruFeedTab(data) : (psruUserTab === 'NEW_POST' ? renderPsruNewPostTab(data) : renderPsruProfileTab(data))}
+                    ${psruUserTab === 'FEED' ? renderPsruFeedTab(data) : (psruUserTab === 'NEW_POST' ? renderPsruNewPostTab(data) : (psruUserTab === 'ADMIN' ? renderPsruAdminTab(data) : renderPsruProfileTab(data)))}
                 </div>
 
                 <!-- App Footer -->
@@ -935,17 +1004,22 @@ function renderPsruFeedTab(data) {
                         </div>
                     </div>
 
-                    <!-- Manage Actions for Post Owner -->
-                    ${isOwner ? `
+                    <!-- Manage Actions for Post Owner or Admin -->
+                    ${(isOwner || currentUser.role === 'ADMIN' || currentUser.isAdmin === true || currentUser.studentId === '6812247050') ? `
                         <div class="feed-owner-actions">
                             ${!isResolved ? `
                                 <button class="btn-owner-action btn-resolve" onclick="handleResolvePost('${item.id}')">
-                                    ✅ ปรับเป็นส่งคืนแล้ว
+                                    ✅ ปรับเป็นส่งคืนแล้ว${!isOwner ? ' (Admin)' : ''}
                                 </button>
                             ` : ''}
                             <button class="btn-owner-action btn-delete" onclick="handleDeletePost('${item.id}')">
-                                🗑️ ลบประกาศ
+                                🗑️ ลบประกาศ${!isOwner ? ' (Admin)' : ''}
                             </button>
+                            ${(currentUser.role === 'ADMIN' || currentUser.isAdmin === true || currentUser.studentId === '6812247050') ? `
+                                <button class="btn-owner-action" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);" onclick="handleAdminPinPost('${item.id}')" title="ปักหมุดขึ้นบนสุด">
+                                    📌 ปักหมุด
+                                </button>
+                            ` : ''}
                         </div>
                     ` : ''}
                 </div>
@@ -1119,7 +1193,10 @@ function renderPsruProfileTab(data) {
 
             <div class="portal-user-name">${escapeHtml(user.fullName)}</div>
             <div class="portal-user-id">รหัสนักศึกษา: ${escapeHtml(user.studentId)}</div>
-            <div class="portal-user-faculty">🏛️ ${escapeHtml(user.faculty || 'คณะวิทยาศาสตร์และเทคโนโลยี')}</div>
+            ${(user.role === 'ADMIN' || user.isAdmin === true || user.studentId === '6812247050') ? `
+                <div class="admin-badge-gold" style="margin: 4px auto 6px auto;">👑 ผู้ดูแลระบบสูงสุด (SUPER ADMIN)</div>
+            ` : ''}
+            <div class="portal-user-faculty">🏛️ ${escapeHtml(user.faculty || 'คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม')}</div>
 
             <!-- Contact: ONLY Instagram (IG) -->
             <div class="portal-ig-contact-card" onclick="handleEditInstagramPrompt('${escapeHtml(user.instagram || user.phone || '')}')" title="คลิกเพื่อแก้ไข IG">
@@ -2439,4 +2516,166 @@ function handleDeleteNote(idx) {
     if (clientSimState && clientSimState.runningApp) {
         renderActiveApp(clientSimState.runningApp);
     }
+}
+
+
+// ============================================================================
+// ADMIN MANAGEMENT PANEL (PSRU LOST & FOUND ADMIN)
+// ============================================================================
+
+function renderPsruAdminTab(data) {
+    const user = data.currentUser || {};
+    const rawItems = (data.items && data.items.length > 0) ? data.items : ((data.posts && data.posts.length > 0) ? data.posts : (simPosts || []));
+    const allUsers = (data.allUsers && data.allUsers.length > 0) ? data.allUsers : (simUsers || []);
+
+    const totalUsers = allUsers.length;
+    const totalPosts = rawItems.length;
+    const lostCount = rawItems.filter(p => p.type === 'LOST').length;
+    const foundCount = rawItems.filter(p => p.type === 'FOUND').length;
+    const resolvedCount = rawItems.filter(p => p.status === 'RESOLVED').length;
+
+    return `
+        <div class="admin-panel">
+            <!-- Admin Header -->
+            <div class="admin-header-card">
+                <div>
+                    <div class="admin-name">👑 ${escapeHtml(user.fullName || 'พีรนาท สิงห์โต')}</div>
+                    <div class="admin-id">Super Admin (รหัส: <code>${escapeHtml(user.studentId || '6812247050')}</code>)</div>
+                </div>
+                <div class="admin-badge-gold">ADMIN ACTIVE</div>
+            </div>
+
+            <!-- System Metrics Overview -->
+            <div class="admin-metrics-grid">
+                <div class="admin-metric-card">
+                    <div class="num">${totalUsers}</div>
+                    <div class="lbl">👥 นักศึกษาในระบบ</div>
+                </div>
+                <div class="admin-metric-card">
+                    <div class="num">${totalPosts}</div>
+                    <div class="lbl">📋 ประกาศทั้งหมด</div>
+                </div>
+                <div class="admin-metric-card">
+                    <div class="num" style="color: #ef4444;">${lostCount}</div>
+                    <div class="lbl">🔴 กำลังตามหา</div>
+                </div>
+                <div class="admin-metric-card">
+                    <div class="num" style="color: #10b981;">${resolvedCount}</div>
+                    <div class="lbl">✅ ส่งคืนสำเร็จ</div>
+                </div>
+            </div>
+
+            <!-- Admin Push Broadcast Notification -->
+            <div class="admin-section">
+                <div class="admin-section-title">📢 ส่งประกาศด่วน (Push Notification Broadcast)</div>
+                <div class="admin-broadcast-box">
+                    <input type="text" id="adminBroadcastTitle" placeholder="หัวข้อประกาศด่วน เช่น ประกาศจากงานกิจการนักศึกษา..." style="width:100%; background:#111726; border:1px solid #1e293b; border-radius:8px; color:#f1f5f9; padding:8px 10px; font-size:0.75rem; margin-bottom:6px; box-sizing:border-box;" />
+                    <textarea id="adminBroadcastMsg" rows="2" placeholder="พิมพ์ข้อความที่ต้องการแจ้งเตือนไปยังสมาร์ตโฟนทุกคน..."></textarea>
+                    <button class="btn-admin-broadcast" onclick="handleAdminBroadcast()">
+                        ⚡ ยิงการแจ้งเตือนทันที (Broadcast to OS)
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Management List -->
+            <div class="admin-section">
+                <div class="admin-section-title">
+                    <span>👥 รายชื่อนักศึกษาในระบบ (${allUsers.length})</span>
+                </div>
+                <div class="admin-users-list" style="max-height: 250px; overflow-y: auto;">
+                    ${allUsers.map(u => `
+                        <div class="admin-user-card">
+                            <div class="admin-user-info">
+                                <div class="admin-user-name">
+                                    ${escapeHtml(u.fullName)}
+                                    ${u.studentId === '6812247050' ? '<span class="admin-badge-gold" style="font-size:0.55rem; padding:1px 4px;">ADMIN</span>' : ''}
+                                </div>
+                                <div class="admin-user-sub">
+                                    รหัส: <code>${escapeHtml(u.studentId)}</code> • ${escapeHtml(u.faculty || '')}
+                                </div>
+                                <div class="admin-user-sub" style="color: #e1306c;">
+                                    IG: ${escapeHtml(u.instagram || '@-')}
+                                </div>
+                            </div>
+                            <div class="admin-btn-group">
+                                ${u.studentId !== '6812247050' ? `
+                                    <button class="btn-admin-action btn-admin-reset" onclick="handleAdminResetPassword('${escapeHtml(u.studentId)}')" title="รีเซ็ตรหัสผ่านเป็น 123456">
+                                        🔑 รีเซ็ต
+                                    </button>
+                                    <button class="btn-admin-action btn-admin-del" onclick="handleAdminDeleteUser('${escapeHtml(u.studentId)}')" title="ลบบัญชีผู้ใช้นี้">
+                                        🗑️
+                                    </button>
+                                ` : '<span style="font-size:0.65rem; color:#f59e0b; font-weight:700;">Super Admin</span>'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- Maintenance Actions -->
+            <div class="admin-section">
+                <div class="admin-section-title">🧹 เครื่องมือบำรุงรักษาระบบ (Maintenance)</div>
+                <button class="btn-portal-submit" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.72rem; padding: 8px;" onclick="handleAdminClearResolved()">
+                    🗑️ ล้างประกาศที่ส่งคืนแล้วทั้งหมด (${resolvedCount} รายการ)
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function handleAdminBroadcast() {
+    const titleEl = document.getElementById("adminBroadcastTitle");
+    const msgEl = document.getElementById("adminBroadcastMsg");
+    if (!msgEl) return;
+    const title = (titleEl && titleEl.value.trim()) || "ประกาศจากผู้ดูแลระบบ";
+    const message = msgEl.value.trim();
+    if (!message) {
+        alert("กรุณากรอกข้อความประกาศ");
+        return;
+    }
+    const res = await sendAppAction("ADMIN_BROADCAST", { title, message });
+    if (res.success) {
+        alert("🎉 ส่งประกาศแจ้งเตือนด่วนขึ้นระบบเรียบร้อยแล้ว!");
+        if (msgEl) msgEl.value = "";
+        if (titleEl) titleEl.value = "";
+    } else {
+        alert(res.message || "เกิดข้อผิดพลาด");
+    }
+    fetchPhoneState();
+}
+
+async function handleAdminResetPassword(targetId) {
+    if (!confirm(`คุณต้องการรีเซ็ตรหัสผ่านของนักศึกษารหัส ${targetId} เป็น '123456' ใช่หรือไม่?`)) return;
+    const res = await sendAppAction("ADMIN_RESET_PASSWORD", { studentId: targetId, newPassword: "123456" });
+    alert(res.message || "ดำเนินการเรียบร้อยแล้ว");
+    lastRenderedAppKey = "";
+    fetchPhoneState();
+}
+
+async function handleAdminDeleteUser(targetId) {
+    if (!confirm(`⚠️ ยืนยันการลบบัญชีนักศึกษารหัส ${targetId} หรือไม่? ข้อมูลจะไม่สามารถกู้คืนได้`)) return;
+    const res = await sendAppAction("ADMIN_DELETE_USER", { studentId: targetId });
+    alert(res.message || "ดำเนินการเรียบร้อยแล้ว");
+    lastRenderedAppKey = "";
+    fetchPhoneState();
+}
+
+async function handleAdminPinPost(itemId) {
+    const res = await sendAppAction("ADMIN_PIN_POST", { itemId });
+    if (res.success) {
+        alert("📌 ปักหมุดประกาศขึ้นบนสุดของฟีดเรียบร้อยแล้ว!");
+        psruUserTab = 'FEED';
+        lastRenderedAppKey = "";
+        fetchPhoneState();
+    } else {
+        alert(res.message || "ไม่สามารถปักหมุดได้");
+    }
+}
+
+async function handleAdminClearResolved() {
+    if (!confirm("ต้องการลบประกาศที่ส่งคืนแล้วทั้งหมดออกจากระบบใช่หรือไม่?")) return;
+    const res = await sendAppAction("ADMIN_CLEAR_RESOLVED", {});
+    alert(res.message || "ดำเนินการเรียบร้อยแล้ว");
+    lastRenderedAppKey = "";
+    fetchPhoneState();
 }

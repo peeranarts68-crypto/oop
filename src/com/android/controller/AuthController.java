@@ -25,6 +25,25 @@ public class AuthController {
     public AuthController() {
         // โหลดข้อมูลเฉพาะที่ผู้ใช้งานสมัครสมาชิกไว้จริง
         this.userDatabase = new LinkedHashMap<>(DataStorage.loadUsers());
+
+        // รับประกันว่าบัญชี 6812247050 (นายพีรนาท สิงห์โต) ได้รับสิทธิ์ ADMIN อัตโนมัติเสมอ
+        StudentUser admin = userDatabase.get("6812247050");
+        if (admin != null) {
+            admin.setRole("ADMIN");
+        } else {
+            StudentUser newAdmin = new StudentUser(
+                "6812247050",
+                "พีรนาท สิงห์โต",
+                "คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม",
+                "@s.peeranart",
+                "uploads/profile_user_1789807298340_a924f1.jpg",
+                "123456",
+                "ADMIN"
+            );
+            userDatabase.put("6812247050", newAdmin);
+            DataStorage.saveUsers(userDatabase);
+        }
+
         this.currentUser = null;
         this.listeners = new ArrayList<>();
     }
@@ -63,6 +82,8 @@ public class AuthController {
         data.put("instagram", user.getInstagram());
         data.put("phone", user.getInstagram());
         data.put("profileImage", user.getProfileImage());
+        data.put("role", user.getRole());
+        data.put("isAdmin", user.isAdmin());
         return new ActionResult(true, "เข้าสู่ระบบสำเร็จ", data);
     }
 
@@ -122,6 +143,8 @@ public class AuthController {
         data.put("instagram", newUser.getInstagram());
         data.put("phone", newUser.getInstagram());
         data.put("profileImage", newUser.getProfileImage());
+        data.put("role", newUser.getRole());
+        data.put("isAdmin", newUser.isAdmin());
         return new ActionResult(true, "สมัครสมาชิกสำเร็จ", data);
     }
 
@@ -152,7 +175,47 @@ public class AuthController {
         data.put("instagram", currentUser.getInstagram());
         data.put("phone", currentUser.getInstagram());
         data.put("profileImage", currentUser.getProfileImage());
+        data.put("role", currentUser.getRole());
+        data.put("isAdmin", currentUser.isAdmin());
         return new ActionResult(true, "อัปเดตข้อมูลโปรไฟล์สำเร็จ", data);
+    }
+
+    // --- Admin Operations (การจัดการโดยแอดมิน) ---
+    public ActionResult adminDeleteUser(String targetStudentId, StudentUser requester) {
+        if (requester == null || !requester.isAdmin()) {
+            return new ActionResult(false, "ต้องใช้สิทธิ์แอดมินในการดำเนินการ", null);
+        }
+        if (targetStudentId == null || targetStudentId.trim().isEmpty()) {
+            return new ActionResult(false, "กรุณาระบุรหัสนักศึกษาที่ต้องการลบ", null);
+        }
+        targetStudentId = targetStudentId.trim();
+        if ("6812247050".equals(targetStudentId)) {
+            return new ActionResult(false, "ไม่สามารถลบบัญชี Super Admin ได้", null);
+        }
+        if (!userDatabase.containsKey(targetStudentId)) {
+            return new ActionResult(false, "ไม่พบบัญชีผู้ใช้รหัส " + targetStudentId, null);
+        }
+        userDatabase.remove(targetStudentId);
+        DataStorage.saveUsers(userDatabase);
+        return new ActionResult(true, "ลบบัญชีผู้ใช้รหัส " + targetStudentId + " เรียบร้อยแล้ว", null);
+    }
+
+    public ActionResult adminResetPassword(String targetStudentId, String newPassword, StudentUser requester) {
+        if (requester == null || !requester.isAdmin()) {
+            return new ActionResult(false, "ต้องใช้สิทธิ์แอดมินในการดำเนินการ", null);
+        }
+        if (targetStudentId == null || targetStudentId.trim().isEmpty()) {
+            return new ActionResult(false, "กรุณาระบุรหัสนักศึกษา", null);
+        }
+        targetStudentId = targetStudentId.trim();
+        StudentUser user = userDatabase.get(targetStudentId);
+        if (user == null) {
+            return new ActionResult(false, "ไม่พบบัญชีผู้ใช้รหัส " + targetStudentId, null);
+        }
+        String pwd = (newPassword != null && !newPassword.trim().isEmpty()) ? newPassword.trim() : "123456";
+        user.setPassword(pwd);
+        DataStorage.saveUsers(userDatabase);
+        return new ActionResult(true, "รีเซ็ตรหัสผ่านสำหรับรหัส " + targetStudentId + " เป็น " + pwd + " สำเร็จ", null);
     }
 
     // เมธอด Logout

@@ -13,14 +13,15 @@ public class StudentUser {
     private final String faculty;     // คณะสังกัด (1 ใน 8 คณะ)
     private String instagram;         // Contact: Instagram (IG)
     private String profileImage;      // รูปภาพโปรไฟล์ส่วนตัว (Data URL หรือ Image Path)
-    private final String password;    // รหัสผ่าน
+    private String password;          // รหัสผ่าน (แก้ไขได้กรณีแอดมินรีเซ็ต)
+    private String role;              // สิทธิ์ผู้ใช้งาน: "ADMIN" หรือ "STUDENT"
     private final long registeredAt;  // เวลาที่ลงทะเบียน
 
     // [Lecture 3: Constructor]
-    public StudentUser(String studentId, String fullName, String faculty, String instagram, String profileImage, String password) {
+    public StudentUser(String studentId, String fullName, String faculty, String instagram, String profileImage, String password, String role) {
         this.studentId = studentId;
         this.fullName = fullName;
-        this.faculty = (faculty != null && !faculty.trim().isEmpty()) ? faculty : "\u0e04\u0e13\u0e30\u0e27\u0e34\u0e17\u0e22\u0e32\u0e28\u0e32\u0e2a\u0e15\u0e23\u0e4c\u0e41\u0e25\u0e30\u0e40\u0e17\u0e04\u0e42\u0e19\u0e42\u0e25\u0e22\u0e35";
+        this.faculty = (faculty != null && !faculty.trim().isEmpty()) ? faculty : "คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม";
         
         // จัดรูปแบบชื่อ Instagram ให้ขึ้นต้นด้วย @ เสมอ
         if (instagram != null && !instagram.trim().isEmpty()) {
@@ -32,7 +33,20 @@ public class StudentUser {
 
         this.profileImage = (profileImage != null) ? profileImage.trim() : "";
         this.password = password;
+        
+        // รหัส 6812247050 (นายพีรนาท สิงห์โต) ได้รับสิทธิ์ ADMIN อัตโนมัติเสมอ
+        if ("6812247050".equals(studentId)) {
+            this.role = "ADMIN";
+        } else {
+            this.role = (role != null && !role.trim().isEmpty()) ? role.trim().toUpperCase() : "STUDENT";
+        }
+        
         this.registeredAt = System.currentTimeMillis();
+    }
+
+    // [Lecture 4: Method Overloading] Constructor พื้นฐาน (กำหนดสิทธิ์อัตโนมัติ)
+    public StudentUser(String studentId, String fullName, String faculty, String instagram, String profileImage, String password) {
+        this(studentId, fullName, faculty, instagram, profileImage, password, "6812247050".equals(studentId) ? "ADMIN" : "STUDENT");
     }
 
     // [Lecture 4: Method Overloading] Constructor เสริมสำหรับความเข้ากันได้
@@ -85,7 +99,45 @@ public class StudentUser {
         return password;
     }
 
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
     public boolean checkPassword(String pwd) {
         return this.password != null && this.password.equals(pwd);
+    }
+
+    // --- Role-Based Access Control (RBAC) ---
+    public String getRole() {
+        if ("6812247050".equals(studentId)) {
+            return "ADMIN";
+        }
+        return (role != null && !role.trim().isEmpty()) ? role.trim().toUpperCase() : "STUDENT";
+    }
+
+    public void setRole(String role) {
+        if ("6812247050".equals(studentId)) {
+            this.role = "ADMIN"; // รหัส 6812247050 เป็น ADMIN ถาวร
+        } else {
+            this.role = (role != null) ? role.trim().toUpperCase() : "STUDENT";
+        }
+    }
+
+    public boolean isAdmin() {
+        return "ADMIN".equalsIgnoreCase(getRole()) || "6812247050".equals(studentId);
+    }
+
+    public java.util.Map<String, Object> toMap() {
+        java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+        map.put("studentId", getStudentId());
+        map.put("fullName", getFullName());
+        map.put("faculty", getFaculty());
+        map.put("instagram", getInstagram());
+        map.put("phone", getInstagram());
+        map.put("profileImage", getProfileImage());
+        map.put("role", getRole());
+        map.put("isAdmin", isAdmin());
+        map.put("registeredAt", getRegisteredAt());
+        return map;
     }
 }

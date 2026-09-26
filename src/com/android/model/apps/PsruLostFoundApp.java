@@ -146,24 +146,94 @@ public class PsruLostFoundApp extends AndroidApplication {
                 return new ActionResult(false, "ไม่พบรหัสประกาศ", null);
             }
 
-            boolean removed = itemList.removeIf(item -> item.getId().equalsIgnoreCase(itemId));
+            StudentUser curUser = authController.getCurrentUser();
+            boolean removed = itemList.removeIf(item -> {
+                if (item.getId().equalsIgnoreCase(itemId)) {
+                    // อนุญาตถ้าเป็นเจ้าของโพสต์ หรือเป็น Admin
+                    return curUser != null && (curUser.isAdmin() || curUser.getStudentId().equals(item.getReporterId()));
+                }
+                return false;
+            });
             if (removed) {
                 DataStorage.savePosts(itemList);
                 return new ActionResult(true, "ลบประกาศเรียบร้อยแล้ว", null);
             } else {
-                return new ActionResult(false, "ไม่พบประกาศที่ต้องการลบ", null);
+                return new ActionResult(false, "ไม่พบประกาศหรือไม่มีสิทธิ์ลบประกาศนี้", null);
             }
 
         } else if ("RESOLVE_POST".equalsIgnoreCase(action)) {
             String itemId = params != null && params.containsKey("itemId") ? String.valueOf(params.get("itemId")) : "";
+            StudentUser curUser = authController.getCurrentUser();
             for (LostFoundItem item : itemList) {
                 if (item.getId().equalsIgnoreCase(itemId)) {
-                    item.markResolved();
-                    DataStorage.savePosts(itemList);
-                    return new ActionResult(true, "ปรับสถานะเรียบร้อยแล้ว", item.toMap());
+                    if (curUser != null && (curUser.isAdmin() || curUser.getStudentId().equals(item.getReporterId()))) {
+                        item.markResolved();
+                        DataStorage.savePosts(itemList);
+                        return new ActionResult(true, "ปรับสถานะเรียบร้อยแล้ว", item.toMap());
+                    } else {
+                        return new ActionResult(false, "ไม่มีสิทธิ์ปรับสถานะประกาศนี้", null);
+                    }
                 }
             }
             return new ActionResult(false, "ไม่พบประกาศ", null);
+
+        } else if ("ADMIN_DELETE_USER".equalsIgnoreCase(action)) {
+            String targetId = params != null && params.containsKey("studentId") ? String.valueOf(params.get("studentId")) : "";
+            return authController.adminDeleteUser(targetId, authController.getCurrentUser());
+
+        } else if ("ADMIN_RESET_PASSWORD".equalsIgnoreCase(action)) {
+            String targetId = params != null && params.containsKey("studentId") ? String.valueOf(params.get("studentId")) : "";
+            String newPwd = params != null && params.containsKey("newPassword") ? String.valueOf(params.get("newPassword")) : "123456";
+            return authController.adminResetPassword(targetId, newPwd, authController.getCurrentUser());
+
+        } else if ("ADMIN_BROADCAST".equalsIgnoreCase(action)) {
+            StudentUser curUser = authController.getCurrentUser();
+            if (curUser == null || !curUser.isAdmin()) {
+                return new ActionResult(false, "ต้องใช้สิทธิ์แอดมินในการส่งประกาศด่วน", null);
+            }
+            String title = params != null && params.containsKey("title") ? String.valueOf(params.get("title")) : "ประกาศจากแอดมิน";
+            String message = params != null && params.containsKey("message") ? String.valueOf(params.get("message")) : "";
+            if (message.trim().isEmpty()) {
+                return new ActionResult(false, "กรุณากรอกข้อความประกาศ", null);
+            }
+            phone.getOs().getNotificationManager().postNotification(
+                "📢 " + title,
+                message + " (" + curUser.getFullName() + ")",
+                "Admin Broadcast"
+            );
+            return new ActionResult(true, "ส่งประกาศด่วนขึ้นระบบสำเร็จ", null);
+
+        } else if ("ADMIN_PIN_POST".equalsIgnoreCase(action)) {
+            StudentUser curUser = authController.getCurrentUser();
+            if (curUser == null || !curUser.isAdmin()) {
+                return new ActionResult(false, "ต้องใช้สิทธิ์แอดมิน", null);
+            }
+            String itemId = params != null && params.containsKey("itemId") ? String.valueOf(params.get("itemId")) : "";
+            LostFoundItem target = null;
+            for (LostFoundItem it : itemList) {
+                if (it.getId().equalsIgnoreCase(itemId)) {
+                    target = it;
+                    break;
+                }
+            }
+            if (target != null) {
+                itemList.remove(target);
+                itemList.add(0, target);
+                DataStorage.savePosts(itemList);
+                return new ActionResult(true, "ปักหมุดประกาศขึ้นบนสุดเรียบร้อยแล้ว", target.toMap());
+            }
+            return new ActionResult(false, "ไม่พบประกาศ", null);
+
+        } else if ("ADMIN_CLEAR_RESOLVED".equalsIgnoreCase(action)) {
+            StudentUser curUser = authController.getCurrentUser();
+            if (curUser == null || !curUser.isAdmin()) {
+                return new ActionResult(false, "ต้องใช้สิทธิ์แอดมิน", null);
+            }
+            int before = itemList.size();
+            itemList.removeIf(it -> "RESOLVED".equalsIgnoreCase(it.getStatus()));
+            int cleared = before - itemList.size();
+            DataStorage.savePosts(itemList);
+            return new ActionResult(true, "ล้างประกาศที่ส่งคืนแล้วจำนวน " + cleared + " รายการ", null);
 
         } else if ("LOGOUT".equalsIgnoreCase(action)) {
             return authController.logout();
@@ -180,14 +250,17 @@ public class PsruLostFoundApp extends AndroidApplication {
 
         StudentUser user = authController.getCurrentUser();
         if (user != null) {
-            Map<String, Object> u = new HashMap<>();
-            u.put("studentId", user.getStudentId());
-            u.put("fullName", user.getFullName());
-            u.put("faculty", user.getFaculty());
-            u.put("instagram", user.getInstagram());
-            u.put("phone", user.getInstagram());
-            u.put("profileImage", user.getProfileImage());
+            Map<String, Object> u = user.toMap();
             data.put("currentUser", u);
+
+            // หากเป็นแอดมิน ให้ส่งข้อมูลรายชื่อผู้ใช้งานทั้งหมดเพื่อจัดการใน Admin Panel
+            if (user.isAdmin()) {
+                List<Map<String, Object>> allUsersList = new ArrayList<>();
+                for (StudentUser su : authController.getAllUsers()) {
+                    allUsersList.add(su.toMap());
+                }
+                data.put("allUsers", allUsersList);
+            }
         } else {
             data.put("currentUser", null);
         }
@@ -195,11 +268,24 @@ public class PsruLostFoundApp extends AndroidApplication {
 
         // ข้อมูลรายการประกาศของหายและแจ้งพบของที่สร้างโดย user เท่านั้น
         List<Map<String, Object>> items = new ArrayList<>();
+        int lostCount = 0;
+        int foundCount = 0;
+        int resolvedCount = 0;
         for (LostFoundItem item : itemList) {
             items.add(item.toMap());
+            if ("RESOLVED".equalsIgnoreCase(item.getStatus())) {
+                resolvedCount++;
+            } else if ("LOST".equalsIgnoreCase(item.getType())) {
+                lostCount++;
+            } else {
+                foundCount++;
+            }
         }
         data.put("items", items);
         data.put("totalItems", items.size());
+        data.put("lostCount", lostCount);
+        data.put("foundCount", foundCount);
+        data.put("resolvedCount", resolvedCount);
 
         return data;
     }
