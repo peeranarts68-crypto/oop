@@ -1106,7 +1106,7 @@ function renderPsruAppHtml(data) {
 
                 <!-- App Footer -->
                 <div class="portal-footer">
-                    Powered By Computer Engineering 68 &amp; 69 PSRU
+                    Powered By ArPo Breez
                 </div>
             </div>
         `;
@@ -1145,7 +1145,7 @@ function renderPsruAppHtml(data) {
 
             <!-- Footer Text -->
             <div class="portal-footer">
-                Powered By Computer Engineering 68 &amp; 69 PSRU
+                Powered By ArPo Breez
             </div>
         </div>
     `;
