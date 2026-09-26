@@ -2729,3 +2729,207 @@ body {
     padding: 2px 6px;
     border-radius: 4px;
 }
+
+/* ============================================================================
+   URGENT ADMIN BROADCAST & TOAST NOTIFICATION STYLES
+   ============================================================================ */
+
+/* Slide-down Push Notification Toast at top of Phone */
+.broadcast-toast-alert {
+    position: absolute;
+    top: 32px;
+    left: 10px;
+    right: 10px;
+    z-index: 1000;
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
+    border: 1.5px solid #fca5a5;
+    border-radius: 14px;
+    padding: 10px 14px;
+    color: #ffffff;
+    box-shadow: 0 12px 30px rgba(185, 28, 28, 0.5), 0 0 20px rgba(245, 158, 11, 0.4);
+    cursor: pointer;
+    animation: toastSlideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
+}
+
+@keyframes toastSlideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.toast-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.toast-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.25);
+    padding: 2px 7px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.toast-close-btn {
+    font-size: 1.1rem;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0 4px;
+}
+
+.toast-close-btn:hover {
+    color: #ffffff;
+}
+
+.toast-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 2px;
+}
+
+.toast-msg {
+    font-size: 0.72rem;
+    color: #fecaca;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.toast-sender {
+    font-size: 0.62rem;
+    color: #fde047;
+    margin-top: 4px;
+    text-align: right;
+    font-weight: 600;
+}
+
+/* Urgent Broadcast Banner on Feed Screen */
+.urgent-broadcast-banner {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(245, 158, 11, 0.12));
+    border: 1.5px solid rgba(245, 158, 11, 0.7);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 18px rgba(245, 158, 11, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.urgent-broadcast-banner::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(to bottom, #ef4444, #f59e0b);
+}
+
+.urgent-broadcast-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.urgent-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 2px 7px;
+    border-radius: 6px;
+    animation: pulseGlow 1.8s infinite alternate;
+}
+
+@keyframes pulseGlow {
+    from { box-shadow: 0 0 4px rgba(239, 68, 68, 0.3); }
+    to { box-shadow: 0 0 12px rgba(239, 68, 68, 0.7); }
+}
+
+.urgent-time {
+    font-size: 0.62rem;
+    color: #94a3b8;
+}
+
+.urgent-broadcast-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 4px;
+}
+
+.urgent-broadcast-msg {
+    font-size: 0.74rem;
+    color: #cbd5e1;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.urgent-broadcast-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.urgent-broadcast-author {
+    font-size: 0.65rem;
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+/* Admin Panel Broadcast and Post Items */
+.admin-broadcast-item, .admin-post-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #111726;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 9px 12px;
+    margin-bottom: 7px;
+    transition: all 0.2s ease;
+}
+
+.admin-broadcast-item:hover, .admin-post-item:hover {
+    border-color: #334155;
+    background: #151d30;
+}
+
+.admin-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.admin-item-title {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-item-sub {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+

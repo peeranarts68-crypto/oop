@@ -125,36 +125,55 @@ async function seedDefaultUserToFirestore() {
 
 function setupFirestoreRealtimeListener() {
     if (!firestoreDb) return;
+
+    // 1. REAL-TIME POSTS SYNC (Single Source of Truth)
     firestoreDb.collection("posts").onSnapshot(snapshot => {
         const cloudPosts = [];
         snapshot.forEach(doc => {
-            cloudPosts.push(doc.data());
+            const data = doc.data();
+            if (!data.id) data.id = doc.id;
+            cloudPosts.push(data);
         });
-        if (cloudPosts.length > 0) {
-            cloudPosts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-            simPosts = cloudPosts;
-            saveSimPosts();
-            if (clientSimState && clientSimState.runningApp && clientSimState.runningApp.appData) {
-                clientSimState.runningApp.appData.posts = simPosts;
-                clientSimState.runningApp.appData.items = simPosts;
-                lastRenderedAppKey = "";
-                renderPhoneUI(clientSimState);
-            }
-            if (currentDatabaseData) {
-                currentDatabaseData.posts = simPosts;
-                const pCount = document.getElementById("dbPostsCount");
-                if (pCount) pCount.textContent = simPosts.length;
-                if (currentDbTab === 'posts') renderDatabaseTabContent();
-            }
+
+        cloudPosts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        // Unconditionally sync simPosts to cloudPosts (even when empty!)
+        simPosts = cloudPosts;
+        saveSimPosts();
+
+        if (clientSimState && clientSimState.runningApp && clientSimState.runningApp.appData) {
+            clientSimState.runningApp.appData.posts = simPosts;
+            clientSimState.runningApp.appData.items = simPosts;
+        }
+        if (currentPhoneState && currentPhoneState.runningApp && currentPhoneState.runningApp.appData) {
+            currentPhoneState.runningApp.appData.posts = simPosts;
+            currentPhoneState.runningApp.appData.items = simPosts;
+        }
+
+        lastRenderedAppKey = "";
+        if (clientSimState) {
+            renderPhoneUI(clientSimState);
+        } else if (currentPhoneState) {
+            renderPhoneUI(currentPhoneState);
+        }
+
+        if (currentDatabaseData) {
+            currentDatabaseData.posts = simPosts;
+            const pCount = document.getElementById("dbPostsCount");
+            if (pCount) pCount.textContent = simPosts.length;
+            if (currentDbTab === 'posts') renderDatabaseTabContent();
         }
     }, err => {
         console.warn("Firestore posts onSnapshot:", err);
     });
 
+    // 2. REAL-TIME USERS SYNC
     firestoreDb.collection("users").onSnapshot(snapshot => {
         const cloudUsers = [];
         snapshot.forEach(doc => {
-            cloudUsers.push(doc.data());
+            const u = doc.data();
+            if (!u.studentId) u.studentId = doc.id;
+            cloudUsers.push(u);
         });
         if (cloudUsers.length > 0) {
             simUsers = cloudUsers;
@@ -175,6 +194,58 @@ function setupFirestoreRealtimeListener() {
         }
     }, err => {
         console.warn("Firestore users onSnapshot:", err);
+    });
+
+    // 3. REAL-TIME ADMIN BROADCASTS SYNC (Multi-Device Broadcast)
+    firestoreDb.collection("broadcasts").orderBy("createdAt", "desc").limit(10).onSnapshot(snapshot => {
+        const cloudBroadcasts = [];
+        snapshot.forEach(doc => {
+            const b = doc.data();
+            if (!b.id) b.id = doc.id;
+            cloudBroadcasts.push(b);
+        });
+
+        // Detect if there is a new broadcast newer than last seen
+        if (cloudBroadcasts.length > 0) {
+            const newest = cloudBroadcasts[0];
+            if (newest.createdAt && newest.createdAt > lastSeenBroadcastTime) {
+                showBroadcastToast(newest);
+                lastSeenBroadcastTime = newest.createdAt;
+                try {
+                    localStorage.setItem("psru_last_bc_time", String(lastSeenBroadcastTime));
+                } catch(e) {}
+            }
+        }
+
+        activeBroadcasts = cloudBroadcasts;
+        saveActiveBroadcasts();
+
+        // Also ensure broadcasts appear in phone notification shade
+        const targetNotifications = (clientSimState && clientSimState.notifications) || (currentPhoneState && currentPhoneState.notifications);
+        if (targetNotifications) {
+            cloudBroadcasts.forEach(bc => {
+                const alreadyHas = targetNotifications.some(n => n.id === bc.id || (n.timestamp === bc.createdAt));
+                if (!alreadyHas) {
+                    targetNotifications.unshift({
+                        id: bc.id,
+                        title: "📢 " + (bc.title || "ประกาศจากผู้ดูแลระบบ"),
+                        message: (bc.message || "") + " (" + (bc.senderName || "Admin") + ")",
+                        appSource: "PSRU Broadcast",
+                        timestamp: bc.createdAt || Date.now()
+                    });
+                }
+            });
+            renderNotificationShade(targetNotifications);
+        }
+
+        lastRenderedAppKey = "";
+        if (clientSimState) {
+            renderPhoneUI(clientSimState);
+        } else if (currentPhoneState) {
+            renderPhoneUI(currentPhoneState);
+        }
+    }, err => {
+        console.warn("Firestore broadcasts onSnapshot:", err);
     });
 }
 
@@ -249,9 +320,9 @@ const SIM_SAMPLE_POSTS = [
 let simPosts = (() => {
     try {
         const stored = localStorage.getItem("psru_sim_posts");
-        return stored ? JSON.parse(stored) : SIM_SAMPLE_POSTS;
+        return stored !== null ? JSON.parse(stored) : [];
     } catch(e) {
-        return SIM_SAMPLE_POSTS;
+        return [];
     }
 })();
 
@@ -259,6 +330,66 @@ function saveSimPosts() {
     try {
         localStorage.setItem("psru_sim_posts", JSON.stringify(simPosts));
     } catch(e) {}
+}
+
+let activeBroadcasts = (() => {
+    try {
+        const stored = localStorage.getItem("psru_sim_broadcasts");
+        return stored !== null ? JSON.parse(stored) : [];
+    } catch(e) {
+        return [];
+    }
+})();
+
+function saveActiveBroadcasts() {
+    try {
+        localStorage.setItem("psru_sim_broadcasts", JSON.stringify(activeBroadcasts));
+    } catch(e) {}
+}
+
+let lastSeenBroadcastTime = Number(localStorage.getItem("psru_last_bc_time") || "0");
+let toastTimer = null;
+
+function showBroadcastToast(bc) {
+    if (!bc) return;
+    const toast = document.getElementById("broadcastToastAlert");
+    if (!toast) return;
+    const tTitle = document.getElementById("toastTitle");
+    const tMsg = document.getElementById("toastMsg");
+    const tSender = document.getElementById("toastSender");
+    if (tTitle) tTitle.textContent = bc.title || "ประกาศด่วนจากระบบ";
+    if (tMsg) tMsg.textContent = bc.message || "";
+    if (tSender) tSender.textContent = "โดย: " + (bc.senderName || "Super Admin");
+    toast.style.display = "block";
+    
+    // Play a subtle notification chime/beep via Web Audio API if permitted
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+    } catch (e) {}
+
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        dismissBroadcastToast();
+    }, 7000);
+}
+
+function dismissBroadcastToast() {
+    const toast = document.getElementById("broadcastToastAlert");
+    if (toast) toast.style.display = "none";
+    if (toastTimer) {
+        clearTimeout(toastTimer);
+        toastTimer = null;
+    }
 }
 
 function showCloudIndicator() {
@@ -454,10 +585,14 @@ function executeSimAction(action, params) {
             return { success: false, message: "ไม่พบประกาศที่ระบุ" };
         }
         case "DELETE_POST": {
-            simPosts = simPosts.filter(p => p.id !== params.itemId);
+            const targetId = params.itemId;
+            simPosts = simPosts.filter(p => p.id !== targetId);
             saveSimPosts();
-            if (firestoreDb) {
-                firestoreDb.collection("posts").doc(params.itemId).delete().catch(e => console.warn("Firestore delete sync:", e));
+            if (firestoreDb && targetId) {
+                firestoreDb.collection("posts").doc(targetId).delete().catch(e => console.warn("Firestore delete sync:", e));
+                firestoreDb.collection("posts").where("id", "==", targetId).get().then(snap => {
+                    snap.forEach(doc => doc.ref.delete());
+                }).catch(e => console.warn("Firestore query delete:", e));
             }
             appData.posts = simPosts;
             appData.items = simPosts;
@@ -487,19 +622,48 @@ function executeSimAction(action, params) {
             return { success: false, message: "ไม่พบบัญชีผู้ใช้" };
         }
         case "ADMIN_BROADCAST": {
-            const title = params.title || "ประกาศจากแอดมิน";
+            const title = params.title || "ประกาศจากผู้ดูแลระบบ";
             const message = params.message || "";
             if (!message.trim()) return { success: false, message: "กรุณากรอกข้อความ" };
             
-            const adminName = (appData.currentUser && appData.currentUser.fullName) || "Super Admin";
+            const adminName = (appData.currentUser && appData.currentUser.fullName) || "Super Admin (พีรนาท)";
+            const adminId = (appData.currentUser && appData.currentUser.studentId) || "6812247050";
+            const broadcastObj = {
+                id: "BC-" + Date.now(),
+                title: title,
+                message: message,
+                senderName: adminName,
+                senderId: adminId,
+                createdAt: Date.now()
+            };
+            
+            activeBroadcasts.unshift(broadcastObj);
+            saveActiveBroadcasts();
+            
+            if (firestoreDb) {
+                firestoreDb.collection("broadcasts").doc(broadcastObj.id).set(broadcastObj).catch(e => console.warn("Firestore broadcast sync:", e));
+            }
+            
             const notif = {
+                id: broadcastObj.id,
                 title: "📢 " + title,
                 message: message + " (" + adminName + ")",
                 appSource: "PSRU Admin",
                 timestamp: Date.now()
             };
             clientSimState.notifications.unshift(notif);
-            return { success: true, message: "ส่งประกาศด่วนขึ้นระบบสำเร็จ" };
+            showBroadcastToast(broadcastObj);
+            return { success: true, message: "ส่งประกาศด่วนขึ้นระบบสำเร็จ", data: { broadcast: broadcastObj } };
+        }
+        case "ADMIN_DELETE_BROADCAST": {
+            const bcId = params.broadcastId;
+            activeBroadcasts = activeBroadcasts.filter(b => b.id !== bcId);
+            saveActiveBroadcasts();
+            if (firestoreDb && bcId) {
+                firestoreDb.collection("broadcasts").doc(bcId).delete().catch(e => console.warn(e));
+                firestoreDb.collection("broadcasts").where("id", "==", bcId).get().then(snap => snap.forEach(d => d.ref.delete())).catch(e => {});
+            }
+            return { success: true, message: "ลบประกาศด่วนเรียบร้อยแล้ว" };
         }
         case "ADMIN_PIN_POST": {
             const idx = simPosts.findIndex(p => p.id === params.itemId);
@@ -514,10 +678,17 @@ function executeSimAction(action, params) {
             return { success: false, message: "ไม่พบประกาศ" };
         }
         case "ADMIN_CLEAR_RESOLVED": {
+            const resolvedPosts = simPosts.filter(p => p.status === 'RESOLVED');
             const before = simPosts.length;
             simPosts = simPosts.filter(p => p.status !== 'RESOLVED');
             const cleared = before - simPosts.length;
             saveSimPosts();
+            if (firestoreDb) {
+                resolvedPosts.forEach(p => {
+                    firestoreDb.collection("posts").doc(p.id).delete().catch(e => console.warn(e));
+                    firestoreDb.collection("posts").where("id", "==", p.id).get().then(snap => snap.forEach(d => d.ref.delete())).catch(e => {});
+                });
+            }
             appData.posts = simPosts;
             appData.items = simPosts;
             return { success: true, message: "ล้างประกาศที่ส่งคืนแล้วจำนวน " + cleared + " รายการ" };
@@ -1028,6 +1199,26 @@ function renderPsruFeedTab(data) {
     }
 
     return `
+        <!-- Urgent Admin Broadcast Banner (Multi-Device Realtime) -->
+        ${(activeBroadcasts && activeBroadcasts.length > 0) ? `
+            <div class="urgent-broadcast-banner">
+                <div class="urgent-broadcast-top">
+                    <span class="urgent-badge">🚨 ประกาศด่วน</span>
+                    <span class="urgent-time">${formatPostTime(activeBroadcasts[0].createdAt)}</span>
+                </div>
+                <div class="urgent-broadcast-title">📢 ${escapeHtml(activeBroadcasts[0].title || 'ประกาศด่วนจากผู้ดูแลระบบ')}</div>
+                <div class="urgent-broadcast-msg">${escapeHtml(activeBroadcasts[0].message || '')}</div>
+                <div class="urgent-broadcast-footer">
+                    <span class="urgent-broadcast-author">โดย: ${escapeHtml(activeBroadcasts[0].senderName || 'Super Admin')}</span>
+                    ${(currentUser.role === 'ADMIN' || currentUser.isAdmin === true || currentUser.studentId === '6812247050') ? `
+                        <button class="btn-text" style="color:#f87171; font-size:0.65rem;" onclick="handleAdminDeleteBroadcast('${escapeHtml(activeBroadcasts[0].id)}')">
+                            🗑️ ลบประกาศนี้
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        ` : ''}
+
         <!-- Filter Bar -->
         <div class="feed-filter-bar">
             <button class="feed-filter-btn ${feedFilter === 'ALL' ? 'active' : ''}" onclick="setFeedFilter('ALL')">
@@ -1340,12 +1531,37 @@ async function handleDeletePost(itemId) {
         return;
     }
     pulsePillar('pillarEncapsulation');
-    const res = await sendAppAction("DELETE_POST", { itemId });
-    if (!res.success) {
-        alert(res.message || "ไม่สามารถลบประกาศได้");
-    } else {
-        lastRenderedAppKey = "";
+
+    // 1. Instant optimistic local deletion
+    simPosts = simPosts.filter(p => p.id !== itemId);
+    saveSimPosts();
+    if (clientSimState && clientSimState.runningApp && clientSimState.runningApp.appData) {
+        clientSimState.runningApp.appData.items = simPosts;
+        clientSimState.runningApp.appData.posts = simPosts;
     }
+    if (currentPhoneState && currentPhoneState.runningApp && currentPhoneState.runningApp.appData) {
+        currentPhoneState.runningApp.appData.items = simPosts;
+        currentPhoneState.runningApp.appData.posts = simPosts;
+    }
+    lastRenderedAppKey = "";
+    if (clientSimState) {
+        renderPhoneUI(clientSimState);
+    } else if (currentPhoneState) {
+        renderPhoneUI(currentPhoneState);
+    }
+
+    // 2. Direct Firestore deletion (doc id and query match)
+    if (firestoreDb && itemId) {
+        firestoreDb.collection("posts").doc(itemId).delete().catch(e => console.warn(e));
+        firestoreDb.collection("posts").where("id", "==", itemId).get().then(s => s.forEach(d => d.ref.delete())).catch(e => {});
+    }
+
+    // 3. Dispatch to backend if available
+    const res = await sendAppAction("DELETE_POST", { itemId });
+    if (!res.success && res.message && !res.message.includes("สำเร็จ")) {
+        console.warn("Backend delete info:", res.message);
+    }
+    lastRenderedAppKey = "";
     fetchPhoneState();
 }
 
@@ -1354,6 +1570,14 @@ async function handleResolvePost(itemId) {
         return;
     }
     pulsePillar('pillarEncapsulation');
+    const p = simPosts.find(x => x.id === itemId);
+    if (p) p.status = "RESOLVED";
+    saveSimPosts();
+    if (firestoreDb && itemId) {
+        firestoreDb.collection("posts").doc(itemId).update({ status: "RESOLVED" }).catch(e => {});
+    }
+    lastRenderedAppKey = "";
+    if (clientSimState) renderPhoneUI(clientSimState);
     const res = await sendAppAction("RESOLVE_POST", { itemId });
     if (!res.success) {
         alert(res.message || "ไม่สามารถปรับสถานะได้");
@@ -1995,7 +2219,23 @@ async function sendAppAction(action, params) {
                 } else if (action === "RESOLVE_POST" && params.itemId) {
                     firestoreDb.collection("posts").doc(params.itemId).update({ status: "RESOLVED" });
                 } else if (action === "DELETE_POST" && params.itemId) {
-                    firestoreDb.collection("posts").doc(params.itemId).delete();
+                    firestoreDb.collection("posts").doc(params.itemId).delete().catch(e => {});
+                    firestoreDb.collection("posts").where("id", "==", params.itemId).get().then(s => s.forEach(d => d.ref.delete())).catch(e => {});
+                } else if (action === "ADMIN_BROADCAST") {
+                    const bc = (jsonResult.data && (jsonResult.data.broadcast || jsonResult.data)) || {
+                        id: "BC-" + Date.now(),
+                        title: params.title || "ประกาศจากผู้ดูแลระบบ",
+                        message: params.message || "",
+                        senderName: "Super Admin (พีรนาท)",
+                        senderId: "6812247050",
+                        createdAt: Date.now()
+                    };
+                    firestoreDb.collection("broadcasts").doc(bc.id).set(bc).catch(e => {});
+                } else if (action === "ADMIN_DELETE_BROADCAST" && params.broadcastId) {
+                    firestoreDb.collection("broadcasts").doc(params.broadcastId).delete().catch(e => {});
+                    firestoreDb.collection("broadcasts").where("id", "==", params.broadcastId).get().then(s => s.forEach(d => d.ref.delete())).catch(e => {});
+                } else if (action === "ADMIN_CLEAR_RESOLVED") {
+                    firestoreDb.collection("posts").where("status", "==", "RESOLVED").get().then(s => s.forEach(d => d.ref.delete())).catch(e => {});
                 } else if (action === "REGISTER" && jsonResult.data && jsonResult.data.user) {
                     firestoreDb.collection("users").doc(jsonResult.data.user.studentId).set(jsonResult.data.user);
                 }
@@ -2572,8 +2812,73 @@ function renderPsruAdminTab(data) {
                     <input type="text" id="adminBroadcastTitle" placeholder="หัวข้อประกาศด่วน เช่น ประกาศจากงานกิจการนักศึกษา..." style="width:100%; background:#111726; border:1px solid #1e293b; border-radius:8px; color:#f1f5f9; padding:8px 10px; font-size:0.75rem; margin-bottom:6px; box-sizing:border-box;" />
                     <textarea id="adminBroadcastMsg" rows="2" placeholder="พิมพ์ข้อความที่ต้องการแจ้งเตือนไปยังสมาร์ตโฟนทุกคน..."></textarea>
                     <button class="btn-admin-broadcast" onclick="handleAdminBroadcast()">
-                        ⚡ ยิงการแจ้งเตือนทันที (Broadcast to OS)
+                        ⚡ ยิงการแจ้งเตือนทันที (Broadcast to All Devices)
                     </button>
+                </div>
+                ${(activeBroadcasts && activeBroadcasts.length > 0) ? `
+                    <div style="margin-top: 10px;">
+                        <div style="font-size: 0.7rem; font-weight: 700; color: #f59e0b; margin-bottom: 6px;">
+                            📢 ประกาศด่วนที่กำลังแสดงผล (${activeBroadcasts.length})
+                        </div>
+                        ${activeBroadcasts.map(bc => `
+                            <div class="admin-broadcast-item">
+                                <div class="admin-item-info">
+                                    <div class="admin-item-title">${escapeHtml(bc.title || 'ประกาศด่วน')}</div>
+                                    <div class="admin-item-sub">${escapeHtml(bc.message)}</div>
+                                    <div class="admin-item-sub" style="color:#f59e0b; font-size:0.6rem;">
+                                        โดย: ${escapeHtml(bc.senderName || 'Admin')} • ${formatPostTime(bc.createdAt)}
+                                    </div>
+                                </div>
+                                <button class="btn-admin-action btn-admin-del" onclick="handleAdminDeleteBroadcast('${escapeHtml(bc.id)}')" title="ลบประกาศด่วนนี้">
+                                    🗑️
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- Post Management List -->
+            <div class="admin-section">
+                <div class="admin-section-title">
+                    <span>📋 จัดการโพสต์ประกาศทั้งหมดในระบบ (${rawItems.length})</span>
+                </div>
+                <div class="admin-users-list" style="max-height: 250px; overflow-y: auto;">
+                    ${rawItems.length === 0 ? `
+                        <div style="font-size: 0.72rem; color: #64748b; text-align: center; padding: 15px;">
+                            ไม่มีโพสต์ประกาศในระบบ (ลบหมดแล้ว)
+                        </div>
+                    ` : rawItems.map(item => `
+                        <div class="admin-post-item">
+                            <div class="admin-item-info">
+                                <div class="admin-item-title">
+                                    <span style="font-size:0.65rem; color:${item.type === 'LOST' ? '#ef4444' : '#10b981'}; font-weight:800;">
+                                        [${item.type === 'LOST' ? 'ของหาย' : 'แจ้งพบ'}]
+                                    </span>
+                                    ${escapeHtml(item.title)}
+                                </div>
+                                <div class="admin-item-sub">
+                                    ผู้แจ้ง: <code>${escapeHtml(item.reporterName)}</code> (${escapeHtml(item.reporterId)})
+                                </div>
+                                <div class="admin-item-sub">
+                                    สถานะ: <span style="color:${item.status === 'RESOLVED' ? '#10b981' : '#f59e0b'}; font-weight:700;">${item.status === 'RESOLVED' ? '✅ ส่งคืนแล้ว' : '⏳ กำลังค้นหา'}</span> • ${formatPostTime(item.createdAt)}
+                                </div>
+                            </div>
+                            <div class="admin-btn-group">
+                                <button class="btn-admin-action" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);" onclick="handleAdminPinPost('${escapeHtml(item.id)}')" title="ปักหมุดขึ้นบนสุด">
+                                    📌
+                                </button>
+                                ${item.status !== 'RESOLVED' ? `
+                                    <button class="btn-admin-action" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="handleResolvePost('${escapeHtml(item.id)}')" title="ปรับเป็นส่งคืนแล้ว">
+                                        ✅
+                                    </button>
+                                ` : ''}
+                                <button class="btn-admin-action btn-admin-del" onclick="handleDeletePost('${escapeHtml(item.id)}')" title="ลบโพสต์นี้ออกจากระบบ">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
 
@@ -2641,6 +2946,30 @@ async function handleAdminBroadcast() {
     } else {
         alert(res.message || "เกิดข้อผิดพลาด");
     }
+    fetchPhoneState();
+}
+
+async function handleAdminDeleteBroadcast(broadcastId) {
+    if (!confirm("คุณต้องการลบประกาศด่วนนี้ออกจากระบบใช่หรือไม่?")) return;
+    
+    // Instant optimistic update
+    activeBroadcasts = activeBroadcasts.filter(b => b.id !== broadcastId);
+    saveActiveBroadcasts();
+    if (firestoreDb && broadcastId) {
+        firestoreDb.collection("broadcasts").doc(broadcastId).delete().catch(e => console.warn(e));
+        firestoreDb.collection("broadcasts").where("id", "==", broadcastId).get().then(s => s.forEach(d => d.ref.delete())).catch(e => {});
+    }
+    
+    lastRenderedAppKey = "";
+    if (clientSimState) {
+        renderPhoneUI(clientSimState);
+    } else if (currentPhoneState) {
+        renderPhoneUI(currentPhoneState);
+    }
+    
+    const res = await sendAppAction("ADMIN_DELETE_BROADCAST", { broadcastId });
+    alert(res.message || "ลบประกาศด่วนเรียบร้อยแล้ว");
+    lastRenderedAppKey = "";
     fetchPhoneState();
 }
 

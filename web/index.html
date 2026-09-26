@@ -74,6 +74,17 @@
                                 <div class="shade-close" onclick="toggleNotificationShade()">▲ ปิดแถบแจ้งเตือน</div>
                             </div>
 
+                            <!-- Urgent Broadcast Push Toast Alert (Top of screen) -->
+                            <div class="broadcast-toast-alert" id="broadcastToastAlert" style="display: none;" onclick="dismissBroadcastToast()">
+                                <div class="toast-top-row">
+                                    <span class="toast-badge">🚨 ประกาศด่วน (Broadcast)</span>
+                                    <span class="toast-close-btn">&times;</span>
+                                </div>
+                                <div class="toast-title" id="toastTitle">หัวข้อประกาศ</div>
+                                <div class="toast-msg" id="toastMsg">เนื้อหาประกาศด่วน...</div>
+                                <div class="toast-sender" id="toastSender">โดย Super Admin</div>
+                            </div>
+
                             <!-- Screen Contents Container -->
                             <div class="screen-body" id="screenBody">
                                 <!-- Home Screen View -->

@@ -9,6 +9,7 @@ import com.android.model.StudentUser;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -201,7 +202,21 @@ public class PsruLostFoundApp extends AndroidApplication {
                 message + " (" + curUser.getFullName() + ")",
                 "Admin Broadcast"
             );
-            return new ActionResult(true, "ส่งประกาศด่วนขึ้นระบบสำเร็จ", null);
+            Map<String, Object> bcData = new LinkedHashMap<>();
+            bcData.put("id", "BC-" + System.currentTimeMillis());
+            bcData.put("title", title);
+            bcData.put("message", message);
+            bcData.put("senderName", curUser.getFullName());
+            bcData.put("senderId", curUser.getStudentId());
+            bcData.put("createdAt", System.currentTimeMillis());
+            return new ActionResult(true, "ส่งประกาศด่วนขึ้นระบบสำเร็จ", bcData);
+
+        } else if ("ADMIN_DELETE_BROADCAST".equalsIgnoreCase(action)) {
+            StudentUser curUser = authController.getCurrentUser();
+            if (curUser == null || !curUser.isAdmin()) {
+                return new ActionResult(false, "ต้องใช้สิทธิ์แอดมิน", null);
+            }
+            return new ActionResult(true, "ลบประกาศด่วนเรียบร้อยแล้ว", null);
 
         } else if ("ADMIN_PIN_POST".equalsIgnoreCase(action)) {
             StudentUser curUser = authController.getCurrentUser();
