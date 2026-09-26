@@ -22,6 +22,7 @@ public class LostFoundItem {
     private final String reporterName;    // ชื่อ-นามสกุลของผู้แจ้ง
     private final String reporterFaculty; // คณะสังกัดของผู้แจ้ง
     private String reporterIg;            // ช่องทางติดต่อ: Instagram (IG)
+    private String reporterPhoto;         // รูปโปรไฟล์ของผู้แจ้ง (Data URL หรือ Path)
     private final long createdAt;         // เวลาที่โพสต์ (timestamp)
     private String status;                // สถานะ: "OPEN" (ยังตามหาอยู่) หรือ "RESOLVED" (ส่งคืนแล้ว)
 
@@ -29,7 +30,7 @@ public class LostFoundItem {
     public LostFoundItem(String id, String title, String type, String category,
                          String location, String description, String photoUrl,
                          String reporterId, String reporterName, String reporterFaculty,
-                         String reporterIg, String status) {
+                         String reporterIg, String reporterPhoto, String status) {
         this.id = id;
         this.title = title;
         this.type = (type != null && type.equalsIgnoreCase("FOUND")) ? "FOUND" : "LOST";
@@ -49,8 +50,18 @@ public class LostFoundItem {
             this.reporterIg = "@arpo_cpe";
         }
 
+        this.reporterPhoto = (reporterPhoto != null) ? reporterPhoto : "";
         this.createdAt = System.currentTimeMillis();
         this.status = (status != null && !status.trim().isEmpty()) ? status : "OPEN";
+    }
+
+    // [Lecture 4: Method Overloading]
+    public LostFoundItem(String id, String title, String type, String category,
+                         String location, String description, String photoUrl,
+                         String reporterId, String reporterName, String reporterFaculty,
+                         String reporterIg, String status) {
+        this(id, title, type, category, location, description, photoUrl,
+             reporterId, reporterName, reporterFaculty, reporterIg, "", status);
     }
 
     // [Lecture 4: Method Overloading]
@@ -62,6 +73,7 @@ public class LostFoundItem {
              user != null ? user.getFullName() : "ผู้ใช้งานนิรนาม",
              user != null ? user.getFaculty() : "คณะวิทยาศาสตร์และเทคโนโลยี",
              user != null ? user.getInstagram() : "@arpo_cpe",
+             user != null ? user.getProfileImage() : "",
              "OPEN");
     }
 
@@ -138,6 +150,14 @@ public class LostFoundItem {
         this.reporterIg = reporterIg;
     }
 
+    public String getReporterPhoto() {
+        return reporterPhoto;
+    }
+
+    public void setReporterPhoto(String reporterPhoto) {
+        this.reporterPhoto = (reporterPhoto != null) ? reporterPhoto : "";
+    }
+
     public long getCreatedAt() {
         return createdAt;
     }
@@ -172,6 +192,7 @@ public class LostFoundItem {
         map.put("reporterName", reporterName);
         map.put("reporterFaculty", reporterFaculty);
         map.put("reporterIg", reporterIg);
+        map.put("reporterPhoto", reporterPhoto);
         map.put("createdAt", createdAt);
         map.put("status", status);
         return map;

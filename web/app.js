@@ -600,6 +600,7 @@ function executeSimAction(action, params) {
                 reporterName: user.fullName,
                 reporterFaculty: user.faculty,
                 reporterIg: user.instagram,
+                reporterPhoto: user.profileImage || "",
                 status: "OPEN",
                 createdAt: Date.now()
             };
@@ -1183,6 +1184,14 @@ function renderPsruFeedTab(data) {
             const isOwner = currentUser.studentId === item.reporterId;
             const isResolved = item.status === 'RESOLVED';
             const igHandle = item.reporterIg || '@arpo_cpe';
+            const reporterUser = (typeof simUsers !== 'undefined' && Array.isArray(simUsers)) 
+                ? simUsers.find(u => u.studentId === item.reporterId) 
+                : null;
+            const reporterPhoto = (reporterUser && reporterUser.profileImage) || item.reporterPhoto || '';
+            const reporterInitial = (item.reporterName && item.reporterName.trim().length > 0) 
+                ? item.reporterName.trim().charAt(0) 
+                : '👤';
+            const cleanPhotoUrl = (reporterPhoto && reporterPhoto.trim().length > 0 && reporterPhoto !== 'data:image/jpeg;base64') ? reporterPhoto : '';
 
             return `
                 <div class="feed-card ${isLost ? 'card-lost' : 'card-found'}">
@@ -1218,11 +1227,25 @@ function renderPsruFeedTab(data) {
                         <div class="feed-item-desc">${escapeHtml(item.description)}</div>
                     ` : ''}
 
-                    <!-- Reporter Info -->
-                    <div class="feed-reporter-row">
-                        <div class="feed-reporter-info">
-                            <span class="reporter-name">👤 ${escapeHtml(item.reporterName)}</span>
-                            <span class="reporter-faculty">${escapeHtml(item.reporterFaculty)}</span>
+                    <!-- Reporter Info with Profile Avatar & Modal View -->
+                    <div class="feed-reporter-row" onclick="handleViewReporterProfile('${escapeHtml(item.reporterId || '')}', '${escapeHtml(item.reporterName || '')}', '${escapeHtml(item.reporterFaculty || '')}', '${escapeHtml(igHandle)}', '${escapeHtml(item.id || '')}')" title="คลิกเพื่อดูรูปโปรไฟล์และข้อมูลผู้ลงประกาศ">
+                        <div class="feed-reporter-left">
+                            <div class="feed-reporter-avatar-thumb">
+                                ${cleanPhotoUrl ? `
+                                    <img src="${cleanPhotoUrl}" class="reporter-avatar-img" alt="${escapeHtml(item.reporterName)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                                    <span class="avatar-fallback-initial" style="display:none;">${escapeHtml(reporterInitial)}</span>
+                                ` : `
+                                    <span class="avatar-fallback-initial">${escapeHtml(reporterInitial)}</span>
+                                `}
+                                <span class="avatar-zoom-icon">🔍</span>
+                            </div>
+                            <div class="feed-reporter-info">
+                                <span class="reporter-name">👤 ${escapeHtml(item.reporterName)}</span>
+                                <span class="reporter-faculty">${escapeHtml(item.reporterFaculty)}</span>
+                            </div>
+                        </div>
+                        <div class="feed-view-profile-hint">
+                            <span>ดูโปรไฟล์</span> 👁️
                         </div>
                     </div>
 
@@ -1663,6 +1686,98 @@ function handleOpenInstagram(igHandle) {
         window.open(`https://instagram.com/${cleanHandle}`, '_blank');
     }
 }
+
+function handleViewReporterProfile(reporterId, fallbackName, fallbackFaculty, fallbackIg, postId) {
+    let user = null;
+    if (typeof simUsers !== 'undefined' && Array.isArray(simUsers) && reporterId) {
+        user = simUsers.find(u => u.studentId === reporterId);
+    }
+    if (!user && clientSimState && clientSimState.runningApp && clientSimState.runningApp.appData) {
+        const cu = clientSimState.runningApp.appData.currentUser;
+        if (cu && cu.studentId === reporterId) {
+            user = cu;
+        }
+    }
+
+    let post = null;
+    if (postId && typeof simPosts !== 'undefined' && Array.isArray(simPosts)) {
+        post = simPosts.find(p => p.id === postId);
+    }
+
+    const name = (user && user.fullName) || fallbackName || 'ไม่ระบุชื่อ';
+    const studentId = reporterId || (user && user.studentId) || '-';
+    const faculty = (user && user.faculty) || fallbackFaculty || 'มหาวิทยาลัยราชภัฏพิบูลสงคราม';
+    const ig = (user && user.instagram) || fallbackIg || '';
+    const rawPhoto = (user && user.profileImage) || (post && post.reporterPhoto) || '';
+    const photo = (rawPhoto && rawPhoto.trim().length > 0 && rawPhoto !== 'data:image/jpeg;base64') ? rawPhoto.trim() : '';
+
+    const modal = document.getElementById('reporterProfileModal');
+    if (!modal) return;
+
+    const avatarEl = document.getElementById('modalReporterAvatar');
+    const nameEl = document.getElementById('modalReporterName');
+    const idEl = document.getElementById('modalReporterId');
+    const facultyEl = document.getElementById('modalReporterFaculty');
+    const contactRowEl = document.getElementById('modalReporterContactRow');
+
+    if (nameEl) nameEl.textContent = name;
+    if (idEl) idEl.textContent = `รหัสนักศึกษา: ${studentId}`;
+    if (facultyEl) facultyEl.textContent = `🏛️ คณะ: ${faculty}`;
+
+    if (avatarEl) {
+        if (photo) {
+            avatarEl.innerHTML = `<img src="${photo}" alt="${escapeHtml(name)}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.parentElement.innerHTML='<span style=\\'font-size:3.5rem;\\'>👤</span>';" />`;
+        } else {
+            const initial = name ? name.trim().charAt(0) : '👤';
+            avatarEl.innerHTML = `<div style="font-size: 3.5rem; font-weight: 700; color: #38bdf8;">${escapeHtml(initial)}</div>`;
+        }
+    }
+
+    if (contactRowEl) {
+        if (ig && ig.trim().length > 0) {
+            contactRowEl.innerHTML = `
+                <a href="javascript:void(0)" onclick="handleOpenInstagram('${escapeHtml(ig)}')" class="btn-profile-ig" title="เปิด Instagram">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                    </svg>
+                    <span>ติดต่อ Instagram (${escapeHtml(ig)})</span>
+                </a>
+            `;
+        } else {
+            contactRowEl.innerHTML = `
+                <div style="font-size: 0.78rem; color: #94a3b8; font-style: italic;">
+                    (ไม่ได้ระบุบัญชี Instagram)
+                </div>
+            `;
+        }
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeReporterProfileModal(event) {
+    if (event && event.target && event.target !== event.currentTarget &&
+        !event.target.classList.contains('profile-modal-close-btn') &&
+        !event.target.classList.contains('btn-profile-modal-dismiss')) {
+        return;
+    }
+    const modal = document.getElementById('reporterProfileModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Close profile modal on ESC key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('reporterProfileModal');
+        if (modal && modal.style.display !== 'none') {
+            modal.style.display = 'none';
+        }
+    }
+});
 
 function formatPostTime(ts) {
     if (!ts) return 'เมื่อสักครู่';

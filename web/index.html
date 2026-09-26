@@ -298,5 +298,34 @@
         </div>
     </div>
 
+    <!-- Reporter Profile Picture & Details Modal -->
+    <div class="profile-modal-overlay" id="reporterProfileModal" style="display: none;" onclick="closeReporterProfileModal(event)">
+        <div class="profile-modal-card" onclick="event.stopPropagation()">
+            <button class="profile-modal-close-btn" onclick="closeReporterProfileModal()">✕</button>
+            
+            <div class="profile-modal-header">
+                <span class="profile-modal-badge">👤 ข้อมูลและรูปโปรไฟล์ผู้ลงประกาศ</span>
+            </div>
+
+            <div class="profile-modal-avatar-wrapper">
+                <div class="profile-modal-avatar" id="modalReporterAvatar">
+                    <span style="font-size: 3.5rem;">👤</span>
+                </div>
+            </div>
+
+            <div class="profile-modal-name" id="modalReporterName">ชื่อ-นามสกุล</div>
+            <div class="profile-modal-id" id="modalReporterId">รหัสนักศึกษา: -</div>
+            <div class="profile-modal-faculty" id="modalReporterFaculty">คณะสังกัด</div>
+
+            <div class="profile-modal-contact-row" id="modalReporterContactRow">
+                <!-- IG Link button rendered via JavaScript -->
+            </div>
+
+            <button class="btn-profile-modal-dismiss" onclick="closeReporterProfileModal()">
+                ปิดหน้าต่าง
+            </button>
+        </div>
+    </div>
+
 </body>
 </html>

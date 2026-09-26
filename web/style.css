@@ -1877,24 +1877,112 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 4px;
-    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    padding: 6px 8px;
+    margin-top: 4px;
+    border-radius: 8px;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.feed-reporter-row:hover {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: rgba(56, 189, 248, 0.3);
+}
+
+.feed-reporter-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+}
+
+.feed-reporter-avatar-thumb {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid #38bdf8;
+    background: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.reporter-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-fallback-initial {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #38bdf8;
+}
+
+.avatar-zoom-icon {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    background: #0284c7;
+    color: white;
+    font-size: 0.5rem;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ffffff;
 }
 
 .feed-reporter-info {
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .reporter-name {
     font-size: 0.72rem;
     font-weight: 600;
     color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .reporter-faculty {
     font-size: 0.62rem;
     color: #38bdf8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.feed-view-profile-hint {
+    font-size: 0.6rem;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    padding: 3px 6px;
+    border-radius: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.feed-reporter-row:hover .feed-view-profile-hint {
+    background: #0284c7;
+    color: #ffffff;
 }
 
 /* Feed Instagram Contact Button */
@@ -2932,4 +3020,208 @@ body {
     color: #94a3b8;
     margin-top: 2px;
 }
+
+/* ========================================================
+   REPORTER PROFILE MODAL
+   ======================================================== */
+.profile-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 15, 29, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 16px;
+    animation: fadeInProfileModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInProfileModal {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.profile-modal-card {
+    position: relative;
+    background: linear-gradient(145deg, #131b2e 0%, #0d1322 100%);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.15);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 380px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: scaleUpProfileModal 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes scaleUpProfileModal {
+    from {
+        transform: scale(0.9) translateY(12px);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.profile-modal-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-modal-close-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.5);
+    transform: rotate(90deg);
+}
+
+.profile-modal-header {
+    margin-bottom: 16px;
+}
+
+.profile-modal-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.profile-modal-avatar-wrapper {
+    position: relative;
+    margin: 8px 0 16px 0;
+}
+
+.profile-modal-avatar {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 4px solid #38bdf8;
+    box-shadow: 0 0 25px rgba(56, 189, 248, 0.4), inset 0 0 15px rgba(0, 0, 0, 0.5);
+    background: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+.profile-modal-avatar:hover {
+    transform: scale(1.03);
+}
+
+.profile-modal-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-modal-name {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.profile-modal-id {
+    font-size: 0.82rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    padding: 3px 10px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.profile-modal-faculty {
+    font-size: 0.8rem;
+    color: #38bdf8;
+    font-weight: 600;
+    margin-bottom: 18px;
+}
+
+.profile-modal-contact-row {
+    width: 100%;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn-profile-ig {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(225, 48, 108, 0.35);
+    transition: all 0.2s ease;
+}
+
+.btn-profile-ig:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(225, 48, 108, 0.5);
+    color: #ffffff;
+}
+
+.btn-profile-modal-dismiss {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-profile-modal-dismiss:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
 

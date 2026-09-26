@@ -131,6 +131,7 @@ public class PsruLostFoundApp extends AndroidApplication {
                 curUser.getFullName(),
                 curUser.getFaculty(),
                 curUser.getInstagram(),
+                curUser.getProfileImage(),
                 "OPEN"
             );
 

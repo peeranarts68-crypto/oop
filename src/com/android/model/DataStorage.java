@@ -108,10 +108,11 @@ public class DataStorage {
                     String reporterFaculty = decode(parts[9]);
                     String reporterIg = decode(parts[10]);
                     String status = decode(parts[11]);
+                    String reporterPhoto = (parts.length >= 13) ? decode(parts[12]) : "";
 
                     posts.add(new LostFoundItem(
                         id, title, type, category, location, description, photoUrl,
-                        reporterId, reporterName, reporterFaculty, reporterIg, status
+                        reporterId, reporterName, reporterFaculty, reporterIg, reporterPhoto, status
                     ));
                 }
             }
@@ -135,7 +136,8 @@ public class DataStorage {
                              encode(p.getReporterName()) + "	" +
                              encode(p.getReporterFaculty()) + "	" +
                              encode(p.getReporterIg()) + "	" +
-                             encode(p.getStatus()));
+                             encode(p.getStatus()) + "	" +
+                             encode(p.getReporterPhoto()));
                 writer.newLine();
             }
         } catch (Exception e) {
