@@ -284,6 +284,37 @@ function saveSimUsers() {
     } catch(e) {}
 }
 
+// Persistent User Session Management (Keep logged in across page reloads)
+function getSavedSessionUser() {
+    try {
+        const stored = localStorage.getItem("psru_session_user");
+        if (stored) {
+            const u = JSON.parse(stored);
+            if (u && u.studentId) {
+                const matched = simUsers.find(x => x.studentId === u.studentId);
+                return matched || u;
+            }
+        }
+    } catch(e) {}
+    return null;
+}
+
+function saveSessionUser(user) {
+    try {
+        if (user && user.studentId) {
+            localStorage.setItem("psru_session_user", JSON.stringify(user));
+        } else {
+            localStorage.removeItem("psru_session_user");
+        }
+    } catch(e) {}
+}
+
+function clearSessionUser() {
+    try {
+        localStorage.removeItem("psru_session_user");
+    } catch(e) {}
+}
+
 const SIM_SAMPLE_POSTS = [
     {
         id: "ITEM-101",
@@ -413,16 +444,18 @@ function hideCloudIndicator() {
 
 function enableClientSimulation() {
     isOfflineMode = true;
-    const currentUser = simUsers[0];
+    const savedUser = getSavedSessionUser();
 
     clientSimState = {
         device: {
-            brand: "Google / PSRU Edition",
-            model: "Pixel 9 Pro (Simulated)",
+            brand: "PSRU Android Virtual",
+            model: "CPE Mobile Simulator",
             serialNumber: "SN-6812247050",
             deviceType: "SMARTPHONE",
             isPoweredOn: true,
-            volume: 80
+            volume: 80,
+            simState: "READY",
+            uptimeSeconds: 3600
         },
         battery: {
             level: 100,
@@ -469,8 +502,8 @@ function enableClientSimulation() {
             appName: "PSRU Lost & Found",
             state: "RESUMED",
             appData: {
-                isLoggedIn: false,
-                currentUser: null,
+                isLoggedIn: !!savedUser,
+                currentUser: savedUser,
                 items: simPosts,
                 posts: simPosts
             }
@@ -488,11 +521,12 @@ function executeSimAction(action, params) {
         enableClientSimulation();
     }
     if (!clientSimState.runningApp) {
+        const savedUser = getSavedSessionUser();
         clientSimState.runningApp = {
             appId: "com.psru.lostfound",
             appName: "PSRU Lost & Found",
             state: "RESUMED",
-            appData: { isLoggedIn: false, currentUser: null, items: simPosts, posts: simPosts }
+            appData: { isLoggedIn: !!savedUser, currentUser: savedUser, items: simPosts, posts: simPosts }
         };
     }
     const appData = clientSimState.runningApp.appData;
@@ -507,7 +541,19 @@ function executeSimAction(action, params) {
             }
             appData.isLoggedIn = true;
             appData.currentUser = found;
+            saveSessionUser(found);
             return { success: true, message: "เข้าสู่ระบบสำเร็จ", data: { user: found } };
+        }
+        case "RESTORE_SESSION": {
+            const sid = String(params.studentId || "").trim();
+            const found = simUsers.find(u => u.studentId === sid);
+            if (found) {
+                appData.isLoggedIn = true;
+                appData.currentUser = found;
+                saveSessionUser(found);
+                return { success: true, message: "คืนค่าเซสชันสำเร็จ", data: { user: found } };
+            }
+            return { success: false, message: "ไม่พบผู้ใช้" };
         }
         case "REGISTER": {
             const sid = String(params.studentId || "").trim();
@@ -531,11 +577,13 @@ function executeSimAction(action, params) {
             }
             appData.isLoggedIn = true;
             appData.currentUser = newUser;
+            saveSessionUser(newUser);
             return { success: true, message: "ลงทะเบียนสำเร็จ", data: { user: newUser } };
         }
         case "LOGOUT": {
             appData.isLoggedIn = false;
             appData.currentUser = null;
+            clearSessionUser();
             return { success: true, message: "ออกจากระบบแล้ว" };
         }
         case "CREATE_POST": {
@@ -698,6 +746,7 @@ function executeSimAction(action, params) {
                 if (params.instagram !== undefined) appData.currentUser.instagram = params.instagram;
                 if (params.profileImage !== undefined) appData.currentUser.profileImage = params.profileImage;
                 saveSimUsers();
+                saveSessionUser(appData.currentUser);
                 if (firestoreDb) {
                     firestoreDb.collection("users").doc(appData.currentUser.studentId).update({
                         instagram: appData.currentUser.instagram,
@@ -732,12 +781,26 @@ function executeSimAction(action, params) {
 
 // Fetch Full Phone State from Java Localhost Backend (with seamless cloud fallback)
 async function fetchPhoneState() {
+    const savedUser = getSavedSessionUser();
     try {
         const res = await fetch("/api/state");
         if (!res.ok) throw new Error("Backend response " + res.status);
         const state = await res.json();
         isOfflineMode = false;
         hideCloudIndicator();
+
+        // If backend has user logged in, preserve it in localStorage
+        if (state.runningApp && state.runningApp.appData) {
+            if (state.runningApp.appData.isLoggedIn && state.runningApp.appData.currentUser) {
+                saveSessionUser(state.runningApp.appData.currentUser);
+            } else if (!state.runningApp.appData.isLoggedIn && savedUser) {
+                // Restore session on server
+                sendAppAction("RESTORE_SESSION", { studentId: savedUser.studentId });
+                state.runningApp.appData.isLoggedIn = true;
+                state.runningApp.appData.currentUser = savedUser;
+            }
+        }
+
         currentPhoneState = state;
         renderPhoneUI(state);
         renderInspector(state);
@@ -745,6 +808,12 @@ async function fetchPhoneState() {
         if (!isOfflineMode || !clientSimState) {
             enableClientSimulation();
         } else {
+            if (clientSimState.runningApp && clientSimState.runningApp.appData) {
+                if (!clientSimState.runningApp.appData.isLoggedIn && savedUser) {
+                    clientSimState.runningApp.appData.isLoggedIn = true;
+                    clientSimState.runningApp.appData.currentUser = savedUser;
+                }
+            }
             renderPhoneUI(clientSimState);
             renderInspector(clientSimState);
         }
@@ -1664,13 +1733,6 @@ function renderPsruLoginForm() {
                 ยังไม่มีบัญชีผู้ใช้งานใช่หรือไม่? 
                 <a href="javascript:void(0)" onclick="setPsruAuthTab('REGISTER')" style="color: #38bdf8; font-weight: 600; text-decoration: underline;">สมัครสมาชิกที่นี่</a>
             </div>
-
-            <div style="margin-top: 12px; padding: 8px 10px; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.3); border-radius: 8px; font-size: 0.72rem; color: #cbd5e1; text-align: center;">
-                💡 บัญชีเริ่มต้น: รหัส <code>6812247050</code> | รหัสผ่าน <code>123456</code><br/>
-                <button type="button" onclick="document.getElementById('loginStudentId').value='6812247050'; document.getElementById('loginPassword').value='123456'; formDraft.loginStudentId='6812247050'; formDraft.loginPassword='123456';" style="margin-top: 5px; padding: 2px 8px; font-size: 0.68rem; background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8; border-radius: 4px; cursor: pointer;">
-                    ⚡ ใส่รหัสทดสอบอัตโนมัติ
-                </button>
-            </div>
         </div>
     `;
 }
@@ -1853,6 +1915,15 @@ async function handlePsruRegister() {
 
 async function handlePsruLogout() {
     pulsePillar('pillarPolymorphism');
+    clearSessionUser();
+    if (clientSimState && clientSimState.runningApp && clientSimState.runningApp.appData) {
+        clientSimState.runningApp.appData.isLoggedIn = false;
+        clientSimState.runningApp.appData.currentUser = null;
+    }
+    if (currentPhoneState && currentPhoneState.runningApp && currentPhoneState.runningApp.appData) {
+        currentPhoneState.runningApp.appData.isLoggedIn = false;
+        currentPhoneState.runningApp.appData.currentUser = null;
+    }
     psruUserTab = 'FEED';
     psruAuthTab = 'LOGIN';
     lastRenderedAppKey = "";
@@ -2241,6 +2312,18 @@ async function sendAppAction(action, params) {
                 }
             } catch (e) {
                 console.warn("Firebase shadow sync error:", e);
+            }
+        }
+
+        if (jsonResult.success) {
+            if (action === "LOGIN" || action === "RESTORE_SESSION") {
+                const u = (jsonResult.data && (jsonResult.data.user || jsonResult.data)) || null;
+                if (u) saveSessionUser(u);
+            } else if (action === "REGISTER") {
+                const u = (jsonResult.data && (jsonResult.data.user || jsonResult.data)) || null;
+                if (u) saveSessionUser(u);
+            } else if (action === "LOGOUT") {
+                clearSessionUser();
             }
         }
         

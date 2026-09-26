@@ -237,6 +237,14 @@ public class AuthController {
         return currentUser;
     }
 
+    public void setCurrentUser(StudentUser user) {
+        this.currentUser = user;
+    }
+
+    public StudentUser getUser(String studentId) {
+        return (studentId != null) ? userDatabase.get(studentId.trim()) : null;
+    }
+
     public boolean isLoggedIn() {
         return currentUser != null;
     }

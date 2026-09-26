@@ -57,6 +57,15 @@ public class PsruLostFoundApp extends AndroidApplication {
             }
             return result;
 
+        } else if ("RESTORE_SESSION".equalsIgnoreCase(action)) {
+            String studentId = params != null && params.containsKey("studentId") ? String.valueOf(params.get("studentId")) : "";
+            StudentUser user = authController.getUser(studentId);
+            if (user != null) {
+                authController.setCurrentUser(user);
+                return new ActionResult(true, "คืนค่าเซสชันสำเร็จ", user.toMap());
+            }
+            return new ActionResult(false, "ไม่พบบัญชีผู้ใช้", null);
+
         } else if ("REGISTER".equalsIgnoreCase(action)) {
             String studentId = params != null && params.containsKey("studentId") ? String.valueOf(params.get("studentId")) : "";
             String fullName = params != null && params.containsKey("fullName") ? String.valueOf(params.get("fullName")) : "";
