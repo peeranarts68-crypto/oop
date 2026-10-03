@@ -61,6 +61,15 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(updateClock, 1000);
     fetchPhoneState();
     setInterval(fetchPhoneState, 3000);
+
+    // Request browser push notification permission upon first interaction
+    const requestNotifPermission = () => {
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission().catch(() => {});
+        }
+    };
+    document.addEventListener("click", requestNotifPermission, { once: true });
+    document.addEventListener("touchstart", requestNotifPermission, { once: true });
 });
 
 function updateClock() {
@@ -136,6 +145,25 @@ function setupFirestoreRealtimeListener() {
         });
 
         cloudPosts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        // Detect newly created posts across all devices in real-time
+        if (!isInitialPostsLoad) {
+            cloudPosts.forEach(post => {
+                if (post.id && !knownPostIds.has(post.id)) {
+                    knownPostIds.add(post.id);
+                    // Trigger alert if recent (within 5 minutes)
+                    const isRecent = !post.createdAt || (Date.now() - post.createdAt < 5 * 60 * 1000);
+                    if (isRecent) {
+                        triggerNewPostNotification(post);
+                    }
+                }
+            });
+        } else {
+            cloudPosts.forEach(p => {
+                if (p.id) knownPostIds.add(p.id);
+            });
+            isInitialPostsLoad = false;
+        }
 
         // Unconditionally sync simPosts to cloudPosts (even when empty!)
         simPosts = cloudPosts;
@@ -380,38 +408,168 @@ function saveActiveBroadcasts() {
 
 let lastSeenBroadcastTime = Number(localStorage.getItem("psru_last_bc_time") || "0");
 let toastTimer = null;
+let currentToastPostId = null;
+let isInitialPostsLoad = true;
+const knownPostIds = new Set();
+
+function playPostNotificationSound(type) {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        const now = audioCtx.currentTime;
+        const playTone = (freq, startOffset, duration) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, now + startOffset);
+            gain.gain.setValueAtTime(0.2, now + startOffset);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + startOffset + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + startOffset);
+            osc.stop(now + startOffset + duration);
+        };
+        if (type === 'LOST') {
+            playTone(659.25, 0.00, 0.15); // E5
+            playTone(880.00, 0.12, 0.25); // A5
+        } else {
+            playTone(523.25, 0.00, 0.12); // C5
+            playTone(659.25, 0.10, 0.12); // E5
+            playTone(783.99, 0.20, 0.25); // G5
+        }
+    } catch (e) {}
+}
+
+function sendBrowserNotification(title, body, icon) {
+    try {
+        if (typeof window !== "undefined" && "Notification" in window) {
+            if (Notification.permission === "granted") {
+                new Notification(title, {
+                    body: body,
+                    icon: icon || "psru_icon.jpg"
+                });
+            } else if (Notification.permission === "default") {
+                Notification.requestPermission().then(perm => {
+                    if (perm === "granted") {
+                        new Notification(title, {
+                            body: body,
+                            icon: icon || "psru_icon.jpg"
+                        });
+                    }
+                }).catch(() => {});
+            }
+        }
+    } catch (e) {}
+}
 
 function showBroadcastToast(bc) {
     if (!bc) return;
     const toast = document.getElementById("broadcastToastAlert");
     if (!toast) return;
+
+    currentToastPostId = null;
+    toast.classList.remove('toast-theme-lost', 'toast-theme-found');
+
+    const tBadge = document.getElementById("toastBadge");
     const tTitle = document.getElementById("toastTitle");
     const tMsg = document.getElementById("toastMsg");
     const tSender = document.getElementById("toastSender");
+
+    if (tBadge) tBadge.textContent = "🚨 ประกาศด่วน (Broadcast)";
     if (tTitle) tTitle.textContent = bc.title || "ประกาศด่วนจากระบบ";
     if (tMsg) tMsg.textContent = bc.message || "";
     if (tSender) tSender.textContent = "โดย: " + (bc.senderName || "Super Admin");
+
     toast.style.display = "block";
-    
-    // Play a subtle notification chime/beep via Web Audio API if permitted
-    try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // A5
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.35);
-    } catch (e) {}
+    playPostNotificationSound('LOST');
+
+    sendBrowserNotification(
+        "🚨 ประกาศด่วน: " + (bc.title || ''),
+        bc.message || '',
+        "psru_icon.jpg"
+    );
 
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
         dismissBroadcastToast();
     }, 7000);
+}
+
+function showPostNotificationToast(post) {
+    if (!post) return;
+    const toast = document.getElementById("broadcastToastAlert");
+    if (!toast) return;
+
+    currentToastPostId = post.id;
+    const isLost = post.type === 'LOST';
+
+    toast.classList.remove('toast-theme-lost', 'toast-theme-found');
+    toast.classList.add(isLost ? 'toast-theme-lost' : 'toast-theme-found');
+
+    const tBadge = document.getElementById("toastBadge");
+    const tTitle = document.getElementById("toastTitle");
+    const tMsg = document.getElementById("toastMsg");
+    const tSender = document.getElementById("toastSender");
+
+    if (tBadge) {
+        tBadge.textContent = isLost 
+            ? '📢 มีคนโพสต์ใหม่: 🔴 ตามหาของ' 
+            : '📢 มีคนโพสต์ใหม่: 🟢 แจ้งพบของ';
+    }
+    if (tTitle) {
+        tTitle.textContent = (isLost ? '🔴 ตามหา: ' : '🟢 พบของ: ') + (post.title || 'ไม่ระบุชื่อสิ่งของ');
+    }
+    if (tMsg) {
+        const loc = post.location ? `📍 ${post.location}` : '';
+        const desc = post.description ? ` (${post.description})` : '';
+        tMsg.textContent = `${loc}${desc} • คลิกเพื่อเปิดดูประกาศ`;
+    }
+    if (tSender) {
+        tSender.textContent = `👤 โดยคุณ: ${post.reporterName || 'สมาชิก'} (${post.reporterFaculty || 'มรภ.พิบูลสงคราม'})`;
+    }
+
+    toast.style.display = "block";
+    playPostNotificationSound(post.type);
+
+    sendBrowserNotification(
+        (isLost ? '🔴 มีคนโพสต์ตามหาของ: ' : '🟢 มีคนแจ้งพบของ: ') + (post.title || ''),
+        `สถานที่: ${post.location || '-'} โดย ${post.reporterName || 'สมาชิก'}`,
+        post.photoUrl || "psru_icon.jpg"
+    );
+
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        dismissBroadcastToast();
+    }, 8000);
+}
+
+function handleToastClick(event) {
+    if (event && event.target && event.target.classList.contains('toast-close-btn')) {
+        dismissBroadcastToast();
+        return;
+    }
+
+    if (currentToastPostId) {
+        const targetId = currentToastPostId;
+        dismissBroadcastToast();
+
+        // Launch app and switch to feed tab
+        launchApp("com.psru.lostfound");
+        setPsruUserTab("FEED");
+
+        setTimeout(() => {
+            const cardEl = document.querySelector(`[data-post-id="${targetId}"]`) || document.querySelector('.feed-card');
+            if (cardEl) {
+                cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                cardEl.classList.add('feed-card-highlight');
+                setTimeout(() => cardEl.classList.remove('feed-card-highlight'), 3000);
+            }
+        }, 350);
+    } else {
+        dismissBroadcastToast();
+    }
 }
 
 function dismissBroadcastToast() {
@@ -420,6 +578,36 @@ function dismissBroadcastToast() {
     if (toastTimer) {
         clearTimeout(toastTimer);
         toastTimer = null;
+    }
+    currentToastPostId = null;
+}
+
+function triggerNewPostNotification(post) {
+    if (!post) return;
+
+    // 1. Show floating push toast on screen & play sound & browser notification
+    showPostNotificationToast(post);
+
+    // 2. Add to phone notification shade & status bar badge (Observer Pattern)
+    const typeLabel = (post.type === 'LOST') ? '🔴 ตามหาของหาย' : '🟢 แจ้งพบของ';
+    const notifItem = {
+        id: 'post_notif_' + (post.id || Date.now()),
+        title: `📢 ${typeLabel}: ${post.title || 'ของหาย/พบของ'}`,
+        message: `${post.location || 'ภายใน มรภ.พิบูลสงคราม'} (โดย: ${post.reporterName || 'ผู้ใช้'})`,
+        appSource: 'PSRU Lost & Found',
+        timestamp: post.createdAt || Date.now(),
+        postId: post.id
+    };
+
+    const targetNotifications = (clientSimState && clientSimState.notifications) || (currentPhoneState && currentPhoneState.notifications);
+    if (targetNotifications) {
+        const alreadyHas = targetNotifications.some(n => n.id === notifItem.id || (n.postId && n.postId === post.id));
+        if (!alreadyHas) {
+            targetNotifications.unshift(notifItem);
+            renderNotificationShade(targetNotifications);
+            const nBadge = document.getElementById("notifCount");
+            if (nBadge) nBadge.textContent = targetNotifications.length;
+        }
     }
 }
 
@@ -611,12 +799,8 @@ function executeSimAction(action, params) {
             }
             appData.posts = simPosts;
             appData.items = simPosts;
-            clientSimState.notifications.unshift({
-                title: (newPost.type === 'LOST' ? '🔴 ตามหา: ' : '🟢 พบของ: ') + newPost.title,
-                message: newPost.location + " (" + newPost.reporterName + ")",
-                appSource: "PSRU Lost & Found",
-                timestamp: Date.now()
-            });
+            knownPostIds.add(newPost.id);
+            triggerNewPostNotification(newPost);
             return { success: true, message: "บันทึกประกาศสำเร็จ", data: { post: newPost } };
         }
         case "RESOLVE_POST": {
@@ -799,6 +983,25 @@ async function fetchPhoneState() {
                 sendAppAction("RESTORE_SESSION", { studentId: savedUser.studentId });
                 state.runningApp.appData.isLoggedIn = true;
                 state.runningApp.appData.currentUser = savedUser;
+            }
+
+            // Offline / Localhost new post detection
+            const items = state.runningApp.appData.items || state.runningApp.appData.posts || [];
+            if (!firestoreDb || !isFirebaseOnline) {
+                if (!isInitialPostsLoad) {
+                    items.forEach(p => {
+                        if (p.id && !knownPostIds.has(p.id)) {
+                            knownPostIds.add(p.id);
+                            const isRecent = !p.createdAt || (Date.now() - p.createdAt < 5 * 60 * 1000);
+                            if (isRecent) {
+                                triggerNewPostNotification(p);
+                            }
+                        }
+                    });
+                } else {
+                    items.forEach(p => { if (p.id) knownPostIds.add(p.id); });
+                    isInitialPostsLoad = false;
+                }
             }
         }
 
@@ -1194,7 +1397,7 @@ function renderPsruFeedTab(data) {
             const cleanPhotoUrl = (reporterPhoto && reporterPhoto.trim().length > 0 && reporterPhoto !== 'data:image/jpeg;base64') ? reporterPhoto : '';
 
             return `
-                <div class="feed-card ${isLost ? 'card-lost' : 'card-found'}">
+                <div class="feed-card ${isLost ? 'card-lost' : 'card-found'}" data-post-id="${escapeHtml(item.id || '')}">
                     <!-- Card Top Header -->
                     <div class="feed-card-header">
                         <div class="feed-badge-group">
