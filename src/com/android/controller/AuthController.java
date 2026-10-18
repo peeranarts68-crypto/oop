@@ -81,7 +81,7 @@ public class AuthController {
         data.put("faculty", user.getFaculty());
         data.put("instagram", user.getInstagram());
         data.put("phone", user.getInstagram());
-        data.put("line", user.getline());
+        data.put("line", user.getLine());
         data.put("profileImage", user.getProfileImage());
         data.put("role", user.getRole());
         data.put("isAdmin", user.isAdmin());
@@ -89,7 +89,7 @@ public class AuthController {
     }
 
     // [Lecture 2: Validation] เมธอด Register พร้อมบันทึก Instagram และรูปโปรไฟล์
-    public ActionResult register(String studentId, String fullName, String faculty, String instagram,String line, String profileImage, String password) {
+    public ActionResult register(String studentId, String fullName, String faculty, String instagram, String line, String profileImage, String password) {
         studentId = (studentId != null) ? studentId.trim() : "";
         fullName = (fullName != null) ? fullName.trim() : "";
         faculty = (faculty != null) ? faculty.trim() : "";
@@ -151,8 +151,12 @@ public class AuthController {
         return new ActionResult(true, "สมัครสมาชิกสำเร็จ", data);
     }
 
+    public ActionResult register(String studentId, String fullName, String faculty, String instagram, String profileImage, String password) {
+        return register(studentId, fullName, faculty, instagram, "", profileImage, password);
+    }
+
     public ActionResult register(String studentId, String fullName, String faculty, String phone, String password) {
-        return register(studentId, fullName, faculty, phone, "", password);
+        return register(studentId, fullName, faculty, phone, "", "", password);
     }
 
     // เมธอดอัปเดตข้อมูลโปรไฟล์ (Instagram และรูปภาพโปรไฟล์)
@@ -193,7 +197,7 @@ public class AuthController {
             return new ActionResult(false, "กรุณาระบุรหัสนักศึกษาที่ต้องการลบ", null);
         }
         targetStudentId = targetStudentId.trim();
-        if ("6812247050".equals(targetStudentId)) {
+        if ("6812247050".equals(targetStudentId) || "6812247020".equals(targetStudentId)) {
             return new ActionResult(false, "ไม่สามารถลบบัญชี Super Admin ได้", null);
         }
         if (!userDatabase.containsKey(targetStudentId)) {

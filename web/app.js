@@ -54,6 +54,16 @@ function updateClock() {
 }
 
 // ============================================================================
+// SUPER ADMIN IDS CONFIGURATION (รองรับหลาย Admin ทั้งระบบ)
+// ============================================================================
+const SUPER_ADMIN_IDS = ["6812247050", "6812247020"];
+
+function isUserAdmin(u) {
+    if (!u) return false;
+    return u.role === 'ADMIN' || u.isAdmin === true || SUPER_ADMIN_IDS.includes(String(u.studentId));
+}
+
+// ============================================================================
 // FIREBASE CLOUD FIRESTORE INTEGRATION
 // ============================================================================
 const firebaseConfig = {
@@ -90,10 +100,18 @@ function initFirebase() {
 async function seedDefaultUserToFirestore() {
     if (!firestoreDb) return;
     try {
-        const userDoc = await firestoreDb.collection("users").doc("6812247050").get();
-        if (!userDoc.exists) {
-            await firestoreDb.collection("users").doc("6812247050").set(SIM_DEFAULT_USERS[0]);
-            console.log("🔥 Seeded user 6812247050 to Firestore");
+        for (const adminId of SUPER_ADMIN_IDS) {
+            const docRef = firestoreDb.collection("users").doc(adminId);
+            const userDoc = await docRef.get();
+            if (userDoc.exists) {
+                if (userDoc.data().role !== "ADMIN") {
+                    await docRef.update({ role: "ADMIN" });
+                    console.log(`🔥 Updated ${adminId} to ADMIN in Firestore`);
+                }
+            } else if (adminId === "6812247050") {
+                await docRef.set(SIM_DEFAULT_USERS[0]);
+                console.log("🔥 Seeded user 6812247050 to Firestore");
+            }
         }
     } catch (e) {
         console.warn("Firestore seed user check:", e);
@@ -172,6 +190,11 @@ function setupFirestoreRealtimeListener() {
             cloudUsers.push(u);
         });
         if (cloudUsers.length > 0) {
+            cloudUsers.forEach(u => {
+                if (SUPER_ADMIN_IDS.includes(String(u.studentId))) {
+                    u.role = "ADMIN";
+                }
+            });
             simUsers = cloudUsers;
             saveSimUsers();
             if (currentDatabaseData) {
@@ -267,8 +290,9 @@ let simUsers = (() => {
     try {
         const stored = localStorage.getItem("psru_sim_users");
         const list = stored ? JSON.parse(stored) : SIM_DEFAULT_USERS;
-        const adminUser = list.find(u => u.studentId === "6812247050");
-        if (adminUser) adminUser.role = "ADMIN";
+        list.forEach(u => {
+            if (SUPER_ADMIN_IDS.includes(String(u.studentId))) u.role = "ADMIN";
+        });
         return list;
     } catch(e) {
         return SIM_DEFAULT_USERS;
@@ -288,7 +312,9 @@ function getSavedSessionUser() {
         if (stored) {
             const u = JSON.parse(stored);
             if (u && u.studentId) {
+                if (SUPER_ADMIN_IDS.includes(String(u.studentId))) u.role = "ADMIN";
                 const matched = simUsers.find(x => x.studentId === u.studentId);
+                if (matched && SUPER_ADMIN_IDS.includes(String(matched.studentId))) matched.role = "ADMIN";
                 return matched || u;
             }
         }
@@ -696,6 +722,7 @@ function executeSimAction(action, params) {
             if (!found) {
                 return { success: false, message: "รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง" };
             }
+            if (SUPER_ADMIN_IDS.includes(String(found.studentId))) found.role = "ADMIN";
             appData.isLoggedIn = true;
             appData.currentUser = found;
             saveSessionUser(found);
@@ -705,6 +732,7 @@ function executeSimAction(action, params) {
             const sid = String(params.studentId || "").trim();
             const found = simUsers.find(u => u.studentId === sid);
             if (found) {
+                if (SUPER_ADMIN_IDS.includes(String(found.studentId))) found.role = "ADMIN";
                 appData.isLoggedIn = true;
                 appData.currentUser = found;
                 saveSessionUser(found);
@@ -726,6 +754,7 @@ function executeSimAction(action, params) {
                 line: params.line || "",
                 profileImage: params.profileImage || "",
                 password: params.password || "",
+                role: SUPER_ADMIN_IDS.includes(String(sid)) ? "ADMIN" : "STUDENT",
                 registeredAt: Date.now()
             };
             simUsers.push(newUser);
@@ -803,7 +832,7 @@ function executeSimAction(action, params) {
             return { success: true, message: "ลบประกาศเรียบร้อยแล้ว" };
         }
         case "ADMIN_DELETE_USER": {
-            if (params.studentId === '6812247050') {
+            if (SUPER_ADMIN_IDS.includes(String(params.studentId))) {
                 return { success: false, message: "ไม่สามารถลบบัญชี Super Admin ได้" };
             }
             simUsers = simUsers.filter(u => u.studentId !== params.studentId);
@@ -1261,7 +1290,7 @@ function renderPsruAppHtml(data) {
                         <span class="subnav-icon">➕</span>
                         <span class="subnav-text">ลงประกาศ</span>
                     </button>
-                    ${(user.role === 'ADMIN' || user.isAdmin === true || user.studentId === '6812247050') ? `
+                    ${isUserAdmin(user) ? `
                     <button class="portal-subnav-btn ${psruUserTab === 'ADMIN' ? 'active' : ''}" onclick="setPsruUserTab('ADMIN')">
                         <span class="subnav-icon">👑</span>
                         <span class="subnav-text">จัดการ</span>
@@ -1442,7 +1471,7 @@ function renderPsruFeedTab(data) {
                     </div>
 
                     <!-- Manage Actions for Post Owner or Admin -->
-                    ${(isOwner || currentUser.role === 'ADMIN' || currentUser.isAdmin === true || currentUser.studentId === '6812247050') ? `
+                    ${(isOwner || isUserAdmin(currentUser)) ? `
                         <div class="feed-owner-actions">
                             ${!isResolved ? `
                                 <button class="btn-owner-action btn-resolve" onclick="handleResolvePost('${item.id}')">
@@ -1452,7 +1481,7 @@ function renderPsruFeedTab(data) {
                             <button class="btn-owner-action btn-delete" onclick="handleDeletePost('${item.id}')">
                                 🗑️ ลบประกาศ${!isOwner ? ' (Admin)' : ''}
                             </button>
-                            ${(currentUser.role === 'ADMIN' || currentUser.isAdmin === true || currentUser.studentId === '6812247050') ? `
+                            ${isUserAdmin(currentUser) ? `
                                 <button class="btn-owner-action" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);" onclick="handleAdminPinPost('${item.id}')" title="ปักหมุดขึ้นบนสุด">
                                     📌 ปักหมุด
                                 </button>
@@ -1476,7 +1505,7 @@ function renderPsruFeedTab(data) {
                 <div class="urgent-broadcast-msg">${escapeHtml(activeBroadcasts[0].message || '')}</div>
                 <div class="urgent-broadcast-footer">
                     <span class="urgent-broadcast-author">โดย: ${escapeHtml(activeBroadcasts[0].senderName || 'Super Admin')}</span>
-                    ${(currentUser.role === 'ADMIN' || currentUser.isAdmin === true || currentUser.studentId === '6812247050') ? `
+                    ${isUserAdmin(currentUser) ? `
                         <button class="btn-text" style="color:#f87171; font-size:0.65rem;" onclick="handleAdminDeleteBroadcast('${escapeHtml(activeBroadcasts[0].id)}')">
                             🗑️ ลบประกาศนี้
                         </button>
@@ -1650,7 +1679,7 @@ function renderPsruProfileTab(data) {
 
             <div class="portal-user-name">${escapeHtml(user.fullName)}</div>
             <div class="portal-user-id">รหัสนักศึกษา: ${escapeHtml(user.studentId)}</div>
-            ${(user.role === 'ADMIN' || user.isAdmin === true || user.studentId === '6812247050') ? `
+            ${isUserAdmin(user) ? `
                 <div class="admin-badge-gold" style="margin: 4px auto 6px auto;">👑 ผู้ดูแลระบบสูงสุด (SUPER ADMIN)</div>
             ` : ''}
             <div class="portal-user-faculty">🏛️ ${escapeHtml(user.faculty || 'คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม')}</div>
@@ -3269,7 +3298,7 @@ function renderPsruAdminTab(data) {
                             <div class="admin-user-info">
                                 <div class="admin-user-name">
                                     ${escapeHtml(u.fullName)}
-                                    ${u.studentId === '6812247050' ? '<span class="admin-badge-gold" style="font-size:0.55rem; padding:1px 4px;">ADMIN</span>' : ''}
+                                    ${isUserAdmin(u) ? '<span class="admin-badge-gold" style="font-size:0.55rem; padding:1px 4px;">ADMIN</span>' : ''}
                                 </div>
                                 <div class="admin-user-sub">
                                     รหัส: <code>${escapeHtml(u.studentId)}</code> • ${escapeHtml(u.faculty || '')}
@@ -3279,7 +3308,7 @@ function renderPsruAdminTab(data) {
                                 </div>
                             </div>
                             <div class="admin-btn-group">
-                                ${u.studentId !== '6812247050' ? `
+                                ${!isUserAdmin(u) ? `
                                     <button class="btn-admin-action btn-admin-reset" onclick="handleAdminResetPassword('${escapeHtml(u.studentId)}')" title="รีเซ็ตรหัสผ่านเป็น 123456">
                                         🔑 รีเซ็ต
                                     </button>

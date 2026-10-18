@@ -52,9 +52,9 @@ public class DataStorage {
                     String instagram = decode(parts[3]);
                     String profileImage = decode(parts[4]);
                     String password = decode(parts[5]);
-                    String role = (parts.length >= 8) ? decode(parts[7]) : ("6812247050".equals(studentId) ? "ADMIN" : "STUDENT");
+                    String role = (parts.length >= 8) ? decode(parts[7]) : ("6812247050".equals(studentId) || "6812247020".equals(studentId) ? "ADMIN" : "STUDENT");
 
-                    StudentUser user = new StudentUser(studentId, fullName, faculty, instagram, profileImage, password, role);
+                    StudentUser user = new StudentUser(studentId, fullName, faculty, instagram, "", profileImage, password, role);
                     users.put(studentId, user);
                 }
             }
