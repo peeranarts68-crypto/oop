@@ -81,6 +81,7 @@ public class AuthController {
         data.put("faculty", user.getFaculty());
         data.put("instagram", user.getInstagram());
         data.put("phone", user.getInstagram());
+        data.put("line", user.getline());
         data.put("profileImage", user.getProfileImage());
         data.put("role", user.getRole());
         data.put("isAdmin", user.isAdmin());
@@ -88,11 +89,12 @@ public class AuthController {
     }
 
     // [Lecture 2: Validation] เมธอด Register พร้อมบันทึก Instagram และรูปโปรไฟล์
-    public ActionResult register(String studentId, String fullName, String faculty, String instagram, String profileImage, String password) {
+    public ActionResult register(String studentId, String fullName, String faculty, String instagram,String line, String profileImage, String password) {
         studentId = (studentId != null) ? studentId.trim() : "";
         fullName = (fullName != null) ? fullName.trim() : "";
         faculty = (faculty != null) ? faculty.trim() : "";
         instagram = (instagram != null) ? instagram.trim() : "";
+        line = (line != null) ? line.trim() : "";
         profileImage = (profileImage != null) ? profileImage.trim() : "";
         password = (password != null) ? password : "";
 
@@ -125,7 +127,7 @@ public class AuthController {
             return new ActionResult(false, msg, null);
         }
 
-        StudentUser newUser = new StudentUser(studentId, fullName, faculty, instagram, profileImage, password);
+        StudentUser newUser = new StudentUser(studentId, fullName, faculty, instagram, line, profileImage, password);
         userDatabase.put(studentId, newUser);
         this.currentUser = newUser;
 
@@ -142,6 +144,7 @@ public class AuthController {
         data.put("faculty", newUser.getFaculty());
         data.put("instagram", newUser.getInstagram());
         data.put("phone", newUser.getInstagram());
+        data.put("line", newUser.getLine());
         data.put("profileImage", newUser.getProfileImage());
         data.put("role", newUser.getRole());
         data.put("isAdmin", newUser.isAdmin());
@@ -174,6 +177,7 @@ public class AuthController {
         data.put("faculty", currentUser.getFaculty());
         data.put("instagram", currentUser.getInstagram());
         data.put("phone", currentUser.getInstagram());
+        data.put("line", currentUser.getLine());
         data.put("profileImage", currentUser.getProfileImage());
         data.put("role", currentUser.getRole());
         data.put("isAdmin", currentUser.isAdmin());

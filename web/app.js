@@ -15,38 +15,6 @@ const DEFAULT_INSTALLED_APPS = [
         version: "15.0.0",
         sizeMb: 30,
         state: "STOPPED"
-    },
-    {
-        appId: "com.android.dialer",
-        appName: "โทรศัพท์",
-        icon: "phone",
-        version: "1.0.0",
-        sizeMb: 12,
-        state: "STOPPED"
-    },
-    {
-        appId: "com.android.camera",
-        appName: "กล้องถ่ายรูป",
-        icon: "camera",
-        version: "1.0.0",
-        sizeMb: 24,
-        state: "STOPPED"
-    },
-    {
-        appId: "com.android.calc",
-        appName: "เครื่องคิดเลข",
-        icon: "calc",
-        version: "1.0.0",
-        sizeMb: 8,
-        state: "STOPPED"
-    },
-    {
-        appId: "com.android.notes",
-        appName: "สมุดบันทึก",
-        icon: "note",
-        version: "1.0.0",
-        sizeMb: 15,
-        state: "STOPPED"
     }
 ];
 
@@ -212,6 +180,7 @@ function setupFirestoreRealtimeListener() {
                     fullName: u.fullName,
                     faculty: u.faculty,
                     instagram: u.instagram,
+                    line: u.line || "",
                     hasProfilePhoto: !!u.profileImage,
                     registeredAt: u.registeredAt
                 }));
@@ -754,6 +723,7 @@ function executeSimAction(action, params) {
                 fullName: params.fullName || "",
                 faculty: params.faculty || "",
                 instagram: params.instagram || "",
+                line: params.line || "",
                 profileImage: params.profileImage || "",
                 password: params.password || "",
                 registeredAt: Date.now()
@@ -788,6 +758,7 @@ function executeSimAction(action, params) {
                 reporterName: user.fullName,
                 reporterFaculty: user.faculty,
                 reporterIg: user.instagram,
+                reporterLine: user.line || "",
                 reporterPhoto: user.profileImage || "",
                 status: "OPEN",
                 createdAt: Date.now()
@@ -2104,6 +2075,8 @@ function renderPsruRegisterForm() {
                     oninput="saveDraftValue('regInstagram', this.value)" />
             </div>
 
+        
+
             <!-- Profile Picture Upload -->
             <div class="portal-input-group">
                 <label>รูปภาพโปรไฟล์ตัวเอง (รูปถ่ายนักศึกษา)</label>
@@ -2187,6 +2160,7 @@ async function handlePsruRegister() {
     const fullName = (document.getElementById("regFullName")?.value || formDraft.regFullName || "").trim();
     const faculty = document.getElementById("regFaculty")?.value || formDraft.regFaculty || "";
     const instagram = (document.getElementById("regInstagram")?.value || formDraft.regInstagram || "").trim();
+    const line = (document.getElementById("regLine")?.value || formDraft.regLine || "").trim();
     const profileImage = formDraft.regPhoto || "";
     const password = document.getElementById("regPassword")?.value || formDraft.regPassword || "";
 
@@ -2214,7 +2188,7 @@ async function handlePsruRegister() {
     pulsePillar('pillarPolymorphism');
     pulsePillar('pillarEncapsulation');
 
-    const res = await sendAppAction("REGISTER", { studentId, fullName, faculty, instagram, profileImage, password });
+    const res = await sendAppAction("REGISTER", { studentId, fullName, faculty, instagram, line, profileImage, password });
     if (!res.success) {
         alert(res.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก");
     } else {
@@ -2223,6 +2197,7 @@ async function handlePsruRegister() {
         formDraft.regFullName = "";
         formDraft.regFaculty = "";
         formDraft.regInstagram = "";
+        formDraft.regLine = "";
         formDraft.regPhoto = "";
         formDraft.regPassword = "";
         psruUserTab = 'FEED';

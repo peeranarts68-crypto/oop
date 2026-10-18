@@ -35,7 +35,7 @@ public class StudentUser {
         this.password = password;
         
         // รหัส 6812247050 (นายพีรนาท สิงห์โต) ได้รับสิทธิ์ ADMIN อัตโนมัติเสมอ
-        if ("6812247050".equals(studentId)) {
+        if ("6812247050".equals(studentId) || "6812247020".equals(studentId) || "6812247001".equals(studentId)) {
             this.role = "ADMIN";
         } else {
             this.role = (role != null && !role.trim().isEmpty()) ? role.trim().toUpperCase() : "STUDENT";
