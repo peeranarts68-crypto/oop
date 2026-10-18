@@ -35,7 +35,7 @@ public class StudentUser {
         this.password = password;
         
         // รหัส 6812247050 (นายพีรนาท สิงห์โต) ได้รับสิทธิ์ ADMIN อัตโนมัติเสมอ
-        if ("6812247050".equals(studentId) || "6812247020".equals(studentId) || "6812247001".equals(studentId)) {
+        if ("6812247050".equals(studentId) || "6812247020".equals(studentId)) {
             this.role = "ADMIN";
         } else {
             this.role = (role != null && !role.trim().isEmpty()) ? role.trim().toUpperCase() : "STUDENT";
@@ -46,7 +46,7 @@ public class StudentUser {
 
     // [Lecture 4: Method Overloading] Constructor พื้นฐาน (กำหนดสิทธิ์อัตโนมัติ)
     public StudentUser(String studentId, String fullName, String faculty, String instagram, String profileImage, String password) {
-        this(studentId, fullName, faculty, instagram, profileImage, password, "6812247050".equals(studentId) ? "ADMIN" : "STUDENT");
+        this(studentId, fullName, faculty, instagram, profileImage, password, "6812247050".equals(studentId) || "6812247020".equals(studentId) ? "ADMIN" : "STUDENT");
     }
 
     // [Lecture 4: Method Overloading] Constructor เสริมสำหรับความเข้ากันได้
