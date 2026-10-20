@@ -1,14 +1,16 @@
 package com.android.model.hardware;
 
 /**
- * Concrete implementation of NetworkAdapter.
- * Demonstrates Encapsulation and Interface Implementation.
+ * [Lecture 4: OOP Concepts - Encapsulation & Interface Implementation]
+ *
+ * คลาสรูปธรรมที่ทำการ Implement จากอินเทอร์เฟซ NetworkAdapter
+ * จัดการสถานะการเปิด/ปิดสัญญาณ Wi-Fi และเครือข่ายมือถือ (5G Cellular)
  */
 public class DefaultNetworkAdapter implements NetworkAdapter {
-    private boolean wifiEnabled;
-    private boolean cellularEnabled;
-    private int wifiSignal;
-    private int cellularSignal;
+    private boolean wifiEnabled;       // สถานะเปิดใช้งาน Wi-Fi
+    private boolean cellularEnabled;   // สถานะเปิดใช้งาน 5G Cellular
+    private int wifiSignal;            // ความแรงสัญญาณ Wi-Fi (%)
+    private int cellularSignal;        // ความแรงสัญญาณมือถือ (%)
 
     public DefaultNetworkAdapter() {
         this.wifiEnabled = true;

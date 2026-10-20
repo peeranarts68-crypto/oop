@@ -5,10 +5,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Concrete Android application for System Settings.
- * Demonstrates OOP:
- *  - Inheritance: extends AndroidApplication
- *  - Hardware manipulation through phone encapsulation
+ * [Lecture 4: OOP Concepts - Inheritance & Polymorphism]
+ *
+ * คลาสแอปพลิเคชันการตั้งค่าระบบ (Settings Application)
+ * - Inheritance: สืบทอดคุณสมบัติมาจากคลาสแม่ AndroidApplication
+ * - ควบคุมและจัดการชิ้นส่วนฮาร์ดแวร์ของมือถือ (Wi-Fi, 5G, ความสว่าง, ระดับเสียง, การชาร์จ)
  */
 public class SettingsApp extends AndroidApplication {
     private final AndroidPhone phone;
@@ -18,6 +19,10 @@ public class SettingsApp extends AndroidApplication {
         this.phone = phone;
     }
 
+    /**
+     * เมธอดประมวลผลคำสั่งของแอปการตั้งค่า (Polymorphism)
+     * รองรับ TOGGLE_WIFI, TOGGLE_CELLULAR, SET_BRIGHTNESS, SET_VOLUME, CHARGE_BATTERY
+     */
     @Override
     public ActionResult executeAction(String action, Map<String, Object> params) {
         if ("TOGGLE_WIFI".equalsIgnoreCase(action)) {
@@ -67,16 +72,10 @@ public class SettingsApp extends AndroidApplication {
         data.put("cellularEnabled", phone.getNetworkAdapter().isCellularEnabled());
         data.put("brightness", phone.getDisplay().getBrightness());
         data.put("volume", phone.getVolume());
+        data.put("batteryLevel", phone.getBattery().getLevel());
+        data.put("batteryCharging", phone.getBattery().isCharging());
+        data.put("storageUsedPercent", phone.getStorage().getUsedPercentage());
         data.put("androidVersion", phone.getOs().getVersionName());
-        data.put("apiLevel", phone.getOs().getApiLevel());
-        data.put("kernel", phone.getOs().getKernelVersion());
-        data.put("model", phone.getModel());
-        data.put("brand", phone.getBrand());
-        data.put("serialNumber", phone.getSerialNumber());
-        data.put("storageTotalMb", phone.getStorage().getTotalCapacityMb());
-        data.put("storageUsedMb", phone.getStorage().getUsedCapacityMb());
-        data.put("batteryMah", phone.getBattery().getCapacityMah());
-        data.put("batteryLevel", "100% ∞ (ไม่จำกัด)");
         return data;
     }
 }

@@ -1,14 +1,17 @@
 package com.android.model.hardware;
 
 /**
- * Camera hardware component.
- * Demonstrates OOP: Encapsulation.
+ * [Lecture 3: OOP Class and Object]
+ * [Lecture 4: OOP Concepts - Encapsulation]
+ *
+ * คลาสชิ้นส่วนฮาร์ดแวร์กล้องถ่ายรูป (Camera Hardware Component) ของสมาร์ตโฟน
+ * ควบคุมความละเอียดเมกะพิกเซล, ไฟแฟลช, ระดับการซูม (Zoom Level), และการถ่ายภาพ
  */
 public class Camera {
-    private final int megaPixels;
-    private boolean flashEnabled;
-    private double zoomLevel; // 1.0x to 10.0x
-    private int photoCount;
+    private final int megaPixels;    // ความละเอียดเซนเซอร์กล้อง (MegaPixels) เช่น 50 MP
+    private boolean flashEnabled;    // สถานะเปิด/ปิดไฟแฟลช (true = เปิดแฟลช)
+    private double zoomLevel;        // ระดับกำลังซูมขยายภาพ (1.0x ถึง 10.0x)
+    private int photoCount;          // จำนวนรูปภาพที่ถ่ายไปแล้วทั้งหมด
 
     public Camera(int megaPixels) {
         this.megaPixels = megaPixels;
@@ -38,12 +41,13 @@ public class Camera {
     }
 
     /**
-     * Captures photo and returns the generated filename and size in MB.
+     * เมธอดจำลองการกดชัตเตอร์ถ่ายภาพ
+     * สุ่มสร้างชื่อไฟล์และคำนวณขนาดภาพ (MB)
      */
     public synchronized PhotoCaptureResult capturePhoto() {
         photoCount++;
         String filename = "IMG_" + System.currentTimeMillis() + ".jpg";
-        int photoSizeMb = 4; // average 4MB per 50MP compressed photo
+        int photoSizeMb = 4; // ค่าเฉลี่ยขนาดรูป 4MB สำหรับความละเอียด 50MP
         return new PhotoCaptureResult(filename, photoSizeMb, zoomLevel, flashEnabled);
     }
 
@@ -51,6 +55,9 @@ public class Camera {
         return photoCount;
     }
 
+    /**
+     * Inner Class ผลลัพธ์จากการถ่ายภาพ
+     */
     public static class PhotoCaptureResult {
         private final String fileName;
         private final int sizeMb;

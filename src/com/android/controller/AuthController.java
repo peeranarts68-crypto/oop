@@ -11,19 +11,41 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * [Lecture 5.2: MVC Architectural Pattern - Controller]
- *
- * คลาส Controller จัดการการตรวจสอบความถูกต้องของการเข้าสู่ระบบ
- * การสมัครสมาชิก และการอัปเดตรูปภาพโปรไฟล์ / ข้อมูลติดต่อ Instagram (IG)
- * โหลดและบันทึกเฉพาะข้อมูลจริงจากผู้ใช้ผ่าน DataStorage (ไม่มีข้อมูล Mock สุ่มขึ้นมาเอง)
+ * ============================================================================
+ * [Lecture 5.2: MVC Architectural Pattern - Controller (ส่วนควบคุม)]
+ * ============================================================================
+ * 
+ * คลาส AuthController ทำหน้าที่เป็น Controller ควบคุมตรรกะทางธุรกิจเกี่ยวกับการยืนยันตัวตน
+ * 
+ * หน้าที่หลัก:
+ * 1. ตรวจสอบความถูกต้อง (Validation) ของข้อมูลเข้าสู่ระบบและการสมัครสมาชิก
+ * 2. บันทึกและซิงค์ข้อมูลผู้ใช้งานลงสู่ไฟล์ถาวร (data/users.dat) ผ่าน DataStorage
+ * 3. แจ้งเตือนเหตุการณ์ (Event Notification) ไปยัง AuthEventListener เมื่อเกิดการ Login/Register/Logout
+ * 4. ควบคุมสิทธิ์การจัดการระดับผู้ดูแลระบบ (Admin Operations) เช่น การลบบัญชีและรีเซ็ตรหัสผ่าน
+ * 
+ * @author CPE Student
+ * @version 1.0
  */
 public class AuthController {
+
+    /** 
+     * ฐานข้อมูลผู้ใช้ในหน่วยความจำ RAM (In-Memory Map)
+     * ใช้ Map<studentId, StudentUser> เพื่อการค้นหาที่รวดเร็วระดับ O(1)
+     */
     private final Map<String, StudentUser> userDatabase;
+
+    /** อ้างอิงผู้ใช้งานที่กำลังเข้าสู่ระบบอยู่ในปัจจุบัน (Current Session) */
     private StudentUser currentUser;
+
+    /** รายการผู้รับฟังเหตุการณ์ (Event Listeners) ตาม Observer Pattern [Lecture 5.1] */
     private final List<AuthEventListener> listeners;
 
+    /**
+     * [Lecture 3: Constructor]
+     * กำหนดค่าเริ่มต้นให้กับ Controller โดยโหลดข้อมูลผู้ใช้งานจากไฟล์ถาวร
+     */
     public AuthController() {
-        // โหลดข้อมูลเฉพาะที่ผู้ใช้งานสมัครสมาชิกไว้จริง
+        // โหลดข้อมูลเฉพาะที่ผู้ใช้งานสมัครสมาชิกไว้จริงจาก data/users.dat
         this.userDatabase = new LinkedHashMap<>(DataStorage.loadUsers());
 
         // รับประกันว่าบัญชี 6812247050 (นายพีรนาท สิงห์โต) ได้รับสิทธิ์ ADMIN อัตโนมัติเสมอ
@@ -36,6 +58,7 @@ public class AuthController {
                 "พีรนาท สิงห์โต",
                 "คณะวิศวกรรมศาสตร์และเทคโนโลยีอุตสาหกรรม",
                 "@s.peeranart",
+                "",
                 "uploads/profile_user_1789807298340_a924f1.jpg",
                 "123456",
                 "ADMIN"
@@ -48,13 +71,27 @@ public class AuthController {
         this.listeners = new ArrayList<>();
     }
 
+    /**
+     * ลงทะเบียนผู้รับฟังเหตุการณ์การยืนยันตัวตน [Lecture 5.1: Event-driven]
+     * @param listener ผู้รับฟังเหตุการณ์
+     */
     public void addListener(AuthEventListener listener) {
         if (!listeners.contains(listener)) {
             listeners.add(listener);
         }
     }
 
-    // [Lecture 2: Logic] เมธอด Login
+    /**
+     * [Lecture 2: Logic & Validation]
+     * ดำเนินการเข้าสู่ระบบ (Login)
+     * 1. ตรวจสอบว่าได้กรอกรหัสนักศึกษาและรหัสผ่านหรือไม่
+     * 2. ค้นหาผู้ใช้ใน userDatabase และตรวจสอบความถูกต้องของรหัสผ่าน
+     * 3. ปรับค่า currentUser และแจ้งเตือนผ่าน Event Listener
+     * 
+     * @param studentId รหัสนักศึกษา 10 หลัก
+     * @param password รหัสผ่าน
+     * @return ActionResult ผลการเข้าสู่ระบบพร้อมข้อมูลผู้ใช้
+     */
     public ActionResult login(String studentId, String password) {
         if (studentId == null || studentId.trim().isEmpty() || password == null || password.isEmpty()) {
             String msg = "กรุณากรอกรหัสนักศึกษาและรหัสผ่าน";
@@ -88,7 +125,24 @@ public class AuthController {
         return new ActionResult(true, "เข้าสู่ระบบสำเร็จ", data);
     }
 
-    // [Lecture 2: Validation] เมธอด Register พร้อมบันทึก Instagram และรูปโปรไฟล์
+    /**
+     * [Lecture 2: Validation] & [Lecture 4: Overloading]
+     * ลงทะเบียนสมาชิกใหม่เข้าสู่ระบบ (Register)
+     * มีการตรวจสอบความถูกต้องของข้อมูล (Validation):
+     * - รหัสนักศึกษาต้องมีความยาว 10 หลัก
+     * - ชื่อ-นามสกุล และคณะต้องไม่ว่างเปล่า
+     * - รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร
+     * - รหัสนักศึกษาต้องไม่ซ้ำกับที่มีอยู่แล้วในระบบ
+     * 
+     * @param studentId รหัสนักศึกษา
+     * @param fullName ชื่อ-นามสกุล
+     * @param faculty คณะสังกัด
+     * @param instagram บัญชี Instagram
+     * @param line บัญชี LINE
+     * @param profileImage ที่อยู่รูปโปรไฟล์
+     * @param password รหัสผ่าน
+     * @return ActionResult ผลการลงทะเบียน
+     */
     public ActionResult register(String studentId, String fullName, String faculty, String instagram, String line, String profileImage, String password) {
         studentId = (studentId != null) ? studentId.trim() : "";
         fullName = (fullName != null) ? fullName.trim() : "";
@@ -131,7 +185,7 @@ public class AuthController {
         userDatabase.put(studentId, newUser);
         this.currentUser = newUser;
 
-        // บันทึกลง Persistent Storage จริง
+        // บันทึกลง Persistent Storage จริงทันที
         DataStorage.saveUsers(userDatabase);
 
         for (AuthEventListener l : listeners) {
@@ -151,15 +205,22 @@ public class AuthController {
         return new ActionResult(true, "สมัครสมาชิกสำเร็จ", data);
     }
 
+    /** Overloaded register() แบบ 6 พารามิเตอร์ */
     public ActionResult register(String studentId, String fullName, String faculty, String instagram, String profileImage, String password) {
         return register(studentId, fullName, faculty, instagram, "", profileImage, password);
     }
 
+    /** Overloaded register() แบบ 5 พารามิเตอร์ */
     public ActionResult register(String studentId, String fullName, String faculty, String phone, String password) {
         return register(studentId, fullName, faculty, phone, "", "", password);
     }
 
-    // เมธอดอัปเดตข้อมูลโปรไฟล์ (Instagram และรูปภาพโปรไฟล์)
+    /**
+     * อัปเดตข้อมูลโปรไฟล์ส่วนตัวของผู้ใช้ปัจจุบัน (Instagram และรูปโปรไฟล์)
+     * @param instagram บัญชี IG ใหม่
+     * @param profileImage รูปโปรไฟล์ใหม่
+     * @return ActionResult
+     */
     public ActionResult updateProfile(String instagram, String profileImage) {
         if (currentUser == null) {
             return new ActionResult(false, "ยังไม่ได้เข้าสู่ระบบ", null);
@@ -172,7 +233,7 @@ public class AuthController {
             currentUser.setProfileImage(profileImage);
         }
 
-        // บันทึกลง Persistent Storage จริง
+        // บันทึกการเปลี่ยนแปลงลงฐานข้อมูลไฟล์จริง
         DataStorage.saveUsers(userDatabase);
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -188,7 +249,18 @@ public class AuthController {
         return new ActionResult(true, "อัปเดตข้อมูลโปรไฟล์สำเร็จ", data);
     }
 
-    // --- Admin Operations (การจัดการโดยแอดมิน) ---
+    // ============================================================================
+    // Admin Operations (คำสั่งสำหรับผู้ดูแลระบบเท่านั้น)
+    // ============================================================================
+
+    /**
+     * สั่งลบบัญชีผู้ใช้งานโดย Admin
+     * มีระบบป้องกันไม่ให้ลบบัญชี Super Admin (6812247050 และ 6812247020)
+     * 
+     * @param targetStudentId รหัสนักศึกษาเป้าหมายที่จะลบ
+     * @param requester ผู้ใช้งานที่ส่งคำสั่งลบ (ต้องมีสิทธิ์ Admin)
+     * @return ActionResult
+     */
     public ActionResult adminDeleteUser(String targetStudentId, StudentUser requester) {
         if (requester == null || !requester.isAdmin()) {
             return new ActionResult(false, "ต้องใช้สิทธิ์แอดมินในการดำเนินการ", null);
@@ -208,6 +280,14 @@ public class AuthController {
         return new ActionResult(true, "ลบบัญชีผู้ใช้รหัส " + targetStudentId + " เรียบร้อยแล้ว", null);
     }
 
+    /**
+     * สั่งรีเซ็ตรหัสผ่านผู้ใช้งานโดย Admin
+     * 
+     * @param targetStudentId รหัสนักศึกษาเป้าหมาย
+     * @param newPassword รหัสผ่านใหม่ที่ต้องการตั้ง
+     * @param requester ผู้ใช้งานที่ส่งคำสั่งรีเซ็ต (ต้องมีสิทธิ์ Admin)
+     * @return ActionResult
+     */
     public ActionResult adminResetPassword(String targetStudentId, String newPassword, StudentUser requester) {
         if (requester == null || !requester.isAdmin()) {
             return new ActionResult(false, "ต้องใช้สิทธิ์แอดมินในการดำเนินการ", null);
@@ -226,7 +306,10 @@ public class AuthController {
         return new ActionResult(true, "รีเซ็ตรหัสผ่านสำหรับรหัส " + targetStudentId + " เป็น " + pwd + " สำเร็จ", null);
     }
 
-    // เมธอด Logout
+    /**
+     * สั่งออกจากระบบ (Logout) และเคลียร์ค่า currentUser
+     * @return ActionResult
+     */
     public ActionResult logout() {
         this.currentUser = null;
         for (AuthEventListener l : listeners) {
@@ -235,11 +318,19 @@ public class AuthController {
         return new ActionResult(true, "ออกจากระบบแล้ว", null);
     }
 
+    /**
+     * แจ้งเตือนข้อผิดพลาดในการตรวจสอบสิทธิ์ไปยัง Listener
+     * @param error ข้อความแจ้งเตือนความผิดพลาด
+     */
     private void notifyAuthFailed(String error) {
         for (AuthEventListener l : listeners) {
             l.onAuthFailed(error);
         }
     }
+
+    // ============================================================================
+    // Getter & Setter Methods
+    // ============================================================================
 
     public StudentUser getCurrentUser() {
         return currentUser;

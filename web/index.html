@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+    <!-- ========================================================================= -->
+    <!-- [Lecture 5.2: MVC Architectural Pattern - View (ส่วนแสดงผล UI)] -->
+    <!-- หน้าจอจำลองสมาร์ตโฟนแอนดรอยด์เสมือน และระบบจัดการของหาย มรภ.พิบูลสงคราม (PSRU Lost & Found) -->
+    <!-- ========================================================================= -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Android Phone OOP Simulator - Localhost</title>
@@ -10,7 +14,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Floating subtle toggle button in top corner -->
+    <!-- ========================================================================= -->
+    <!-- แผงปุ่มควบคุมลอยมุมขวาบน (Floating Controls: ดูฐานข้อมูล & ข้อมูลสถาปัตยกรรม OOP) -->
+    <!-- ========================================================================= -->
     <div class="floating-controls">
         <button class="btn-float btn-db-trigger" id="btnViewDatabase" onclick="openDatabaseModal()" title="เปิดดูฐานข้อมูล Live Database">
             <span>🗄️ ดูฐานข้อมูล (View Database)</span>
@@ -20,27 +26,30 @@
         </button>
     </div>
 
+    <!-- Layout หลักของเว็บ: จำลองสมาร์ตโฟน และแผงตรวจสอบ OOP -->
     <div class="app-layout phone-only-mode" id="appLayout">
         <main class="main-content">
-            <!-- Column 1: Virtual Android Phone -->
+            <!-- ================================================================= -->
+            <!-- คอลัมน์ที่ 1: ตัวเครื่องโทรศัพท์สมาร์ตโฟนจำลอง (Virtual Android Phone) -->
+            <!-- ================================================================= -->
             <section class="phone-section">
                 <div class="phone-wrapper">
-                    <!-- Hardware Volume & Power Buttons on Chassis -->
+                    <!-- ปุ่มฮาร์ดแวร์จริงบนตัวเครื่อง (Hardware Buttons: Power Key, Volume Up/Down) -->
                     <div class="hardware-button vol-up" onclick="changeVolume('up')" title="Hardware: Volume Up"></div>
                     <div class="hardware-button vol-down" onclick="changeVolume('down')" title="Hardware: Volume Down"></div>
                     <div class="hardware-button power-btn" onclick="togglePower()" title="Hardware: Power Key"></div>
 
-                    <!-- Phone Frame -->
+                    <!-- โครงตัวเครื่องโทรศัพท์ (Phone Chassis) -->
                     <div class="phone-chassis" id="phoneChassis">
-                        <!-- Speaker Earpiece -->
+                        <!-- ลำโพงสนทนาด้านบนตัวเครื่อง (Speaker Earpiece) -->
                         <div class="speaker-grill"></div>
 
-                        <!-- Screen Area -->
+                        <!-- พื้นที่หน้าจอแสดงผล (Phone Screen / OLED Display) -->
                         <div class="phone-screen" id="phoneScreen">
-                            <!-- Punch hole camera -->
+                            <!-- รูกล้องหน้าแบบเจาะรู (Punch Hole Camera) -->
                             <div class="punch-hole-camera"></div>
 
-                            <!-- Screen Off Overlay -->
+                            <!-- เลเยอร์หน้าจอดับ (Screen Off Overlay เมื่อสั่งปิดเครื่องหรือพักจอ) -->
                             <div class="screen-off-overlay" id="screenOffOverlay">
                                 <div class="power-off-msg">
                                     <svg viewBox="0 0 24 24" width="48" height="48" fill="#555"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
@@ -49,7 +58,7 @@
                                 </div>
                             </div>
 
-                            <!-- Android Status Bar -->
+                            <!-- แถบแสดงสถานะระบบของ Android (Status Bar: นาฬิกา, แจ้งเตือน, สัญญาณ Wi-Fi, แบตเตอรี่) -->
                             <div class="status-bar" id="statusBar">
                                 <div class="status-left">
                                     <span id="statusClock">12:00</span>
@@ -62,7 +71,7 @@
                                 </div>
                             </div>
 
-                            <!-- Notification Shade (Pull down) -->
+                            <!-- แถบเลื่อนดูการแจ้งเตือน (Notification Shade: Observer Pattern) -->
                             <div class="notification-shade" id="notificationShade">
                                 <div class="shade-header">
                                     <span>Notifications (Observer Pattern)</span>
@@ -74,7 +83,7 @@
                                 <div class="shade-close" onclick="toggleNotificationShade()">▲ ปิดแถบแจ้งเตือน</div>
                             </div>
 
-                            <!-- Real-time Push Notification Toast Alert (Top of screen) -->
+                            <!-- กล่องป๊อปอัปแจ้งเตือนด่วนแบบ Real-time Toast (Broadcast Alert จาก Admin) -->
                             <div class="broadcast-toast-alert" id="broadcastToastAlert" style="display: none;" onclick="handleToastClick(event)">
                                 <div class="toast-top-row">
                                     <span class="toast-badge" id="toastBadge">📢 แจ้งเตือน</span>
@@ -85,9 +94,9 @@
                                 <div class="toast-sender" id="toastSender">โดย ผู้ลงประกาศ</div>
                             </div>
 
-                            <!-- Screen Contents Container -->
+                            <!-- พื้นที่แสดงเนื้อหาบนหน้าจอโทรศัพท์ (Screen Body) -->
                             <div class="screen-body" id="screenBody">
-                                <!-- Home Screen View -->
+                                <!-- 1. หน้าจอโฮมสกรีน (Home Screen View) -->
                                 <div class="screen-view home-view" id="homeView">
                                     <div class="home-widget-clock">
                                         <div class="big-time" id="homeClock">12:00</div>
@@ -99,13 +108,13 @@
                                         <span class="g-text">ค้นหาของหาย มรภ.พิบูลสงคราม (เปิดแอป)...</span>
                                     </div>
 
-                                    <!-- Installed Apps Grid -->
+                                    <!-- ตารางไอคอนแอปพลิเคชันที่ติดตั้งในเครื่อง (App Grid) -->
                                     <div class="apps-grid" id="appsGrid">
-                                        <!-- Rendered dynamically -->
+                                        <!-- สร้างและแสดงผลแบบไดนามิกผ่าน JavaScript -->
                                     </div>
                                 </div>
 
-                                <!-- App View Container (when an app is active) -->
+                                <!-- 2. หน้าต่างแอปพลิเคชันที่กำลังทำงานอยู่ (Active App View Container) -->
                                 <div class="screen-view app-view" id="appView" style="display: none;">
                                     <div class="app-header-bar">
                                         <button class="btn-icon" onclick="pressHome()">✕</button>
@@ -113,12 +122,12 @@
                                         <span class="app-header-status" id="appHeaderStatus">RESUMED</span>
                                     </div>
                                     <div class="app-content-body" id="appContentBody">
-                                        <!-- Dynamic App Content -->
+                                        <!-- เนื้อหา UI ภายในแต่ละแอปจะถูกเรนเดอร์ลงในคอนเทนเนอร์นี้ -->
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Android Navigation Bar (Bottom) -->
+                            <!-- แถบปุ่มนำทางด้านล่างของ Android (Android Navigation Bar: Back, Home, Recents) -->
                             <div class="nav-bar">
                                 <button class="nav-btn" onclick="pressBack()" title="Back Button">
                                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
@@ -135,9 +144,11 @@
                 </div>
             </section>
 
-            <!-- Column 2: OOP Live Architecture & State Inspector -->
+            <!-- ================================================================= -->
+            <!-- คอลัมน์ที่ 2: แผงตรวจสอบสถาปัตยกรรม OOP และ Memory Heap แบบเรียลไทม์ -->
+            <!-- ================================================================= -->
             <section class="inspector-section">
-                <!-- OOP Pillars Live Activity Indicator -->
+                <!-- การทำงานของ 4 เสาหลัก OOP ในระบบ (OOP Pillars Live Activity Indicator) -->
                 <div class="card oop-activity-card">
                     <h2>🎯 เสาหลัก OOP ที่ทำงานอยู่ขณะนี้ (OOP Pillars in Action)</h2>
                     <div class="pillars-grid">
@@ -164,7 +175,7 @@
                     </div>
                 </div>
 
-                <!-- Live Java Objects Memory Inspector -->
+                <!-- ตัวตรวจสอบสถานะอ็อบเจกต์ในหน่วยความจำ Java Heap (Live Java Heap & Object Inspector) -->
                 <div class="card state-inspector-card">
                     <div class="card-header">
                         <h2>🔬 Live Java Heap & Object Inspector</h2>
@@ -194,7 +205,7 @@
                         </div>
                     </div>
 
-                    <!-- Active Stored Files Table -->
+                    <!-- ตารางไฟล์ที่บันทึกอยู่ในหน่วยความจำแฟลชจำลอง (Active Stored Files Table) -->
                     <div class="sub-table-container">
                         <h3>📁 รายการไฟล์ใน Hardware Storage (Internal Flash Memory)</h3>
                         <table class="data-table">
@@ -212,7 +223,7 @@
                     </div>
                 </div>
 
-                <!-- OOP Class Hierarchy & Design Patterns -->
+                <!-- แผนผังลำดับชั้นคลาสและดีไซน์แพตเทิร์น (OOP Class Hierarchy & Design Patterns) -->
                 <div class="card class-hierarchy-card">
                     <h2>📐 แผนผังโครงสร้างคลาส OOP (Class Hierarchy & Design Patterns)</h2>
                     <div class="tree-view">
@@ -252,12 +263,15 @@
         </main>
     </div>
 
-    <!-- Firebase SDK (Compat Version for Browser Zero-Config) -->
+    <!-- Firebase SDK (Compat Version สำหรับ Cloud Firestore Real-time Sync) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- ไฟล์ตรรกะฝั่ง Web Client -->
     <script src="app.js"></script>
 
-    <!-- Database Viewer Modal -->
+    <!-- ========================================================================= -->
+    <!-- หน้าต่างโมดอลสำหรับเปิดดูฐานข้อมูลสดใน RAM (Live Database Viewer Modal) -->
+    <!-- ========================================================================= -->
     <div class="db-modal-overlay" id="dbModalOverlay" onclick="closeDatabaseModal(event)">
         <div class="db-modal-card" onclick="event.stopPropagation()">
             <div class="db-modal-header">
@@ -271,7 +285,7 @@
                 </div>
             </div>
 
-            <!-- Database Tabs -->
+            <!-- แถบแท็บสลับตารางฐานข้อมูล (Users, Posts, Storage Files, Raw JSON) -->
             <div class="db-tabs-bar">
                 <button class="db-tab-btn active" id="tabBtnUsers" onclick="switchDbTab('users')">
                     👥 ตารางผู้ใช้งาน (<span id="dbUsersCount">0</span>)
@@ -287,7 +301,7 @@
                 </button>
             </div>
 
-            <!-- Tab Contents -->
+            <!-- เนื้อหาตารางในแท็บที่เลือก -->
             <div class="db-modal-body" id="dbModalBody">
                 <div class="db-loading">กำลังโหลดข้อมูลจาก Java Server...</div>
             </div>
@@ -298,7 +312,9 @@
         </div>
     </div>
 
-    <!-- Reporter Profile Picture & Details Modal -->
+    <!-- ========================================================================= -->
+    <!-- หน้าต่างโมดอลสำหรับดูรูปโปรไฟล์และข้อมูลผู้ลงประกาศ (Reporter Profile Modal) -->
+    <!-- ========================================================================= -->
     <div class="profile-modal-overlay" id="reporterProfileModal" style="display: none;" onclick="closeReporterProfileModal(event)">
         <div class="profile-modal-card" onclick="event.stopPropagation()">
             <button class="profile-modal-close-btn" onclick="closeReporterProfileModal()">✕</button>
@@ -318,7 +334,7 @@
             <div class="profile-modal-faculty" id="modalReporterFaculty">คณะสังกัด</div>
 
             <div class="profile-modal-contact-row" id="modalReporterContactRow">
-                <!-- IG Link button rendered via JavaScript -->
+                <!-- ปุ่มเปิดลิงก์ IG / LINE สร้างโดย JavaScript -->
             </div>
 
             <button class="btn-profile-modal-dismiss" onclick="closeReporterProfileModal()">

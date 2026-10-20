@@ -4,10 +4,30 @@ import java.util.Collection;
 import java.util.Map;
 
 /**
- * Lightweight JSON serializer helper without external dependencies.
+ * ============================================================================
+ * [Lecture 5.2: MVC Architectural Pattern - Data Serialization Helper]
+ * ============================================================================
+ * 
+ * คลาสเครื่องมือช่วยแปลง Java Objects ให้อยู่ในรูปแบบสตริง JSON (JSON Serializer)
+ * ออกแบบให้ทำงานได้ด้วย Pure Java โดยไม่ต้องพึ่งพาไลบรารีภายนอก (Zero External Dependencies)
+ * 
+ * รองรับการแปลง:
+ * 1. ข้อมูลพื้นฐาน (String, Number, Boolean, null)
+ * 2. โครงสร้างข้อมูล Map<K, V> -> JSON Object {...}
+ * 3. โครงสร้างข้อมูล Collection / List<T> -> JSON Array [...]
+ * 4. การจัดการ Escape Characters สำหรับตัวอักษรพิเศษและ Unicode ภาษาไทย
+ * 
+ * @author CPE Student
+ * @version 1.0
  */
 public class JsonHelper {
 
+    /**
+     * แปลงอ็อบเจกต์ Java ใดๆ ให้กลายเป็นสตริง JSON
+     * 
+     * @param obj อ็อบเจกต์ที่ต้องการแปลง เช่น Map, List, String, Number
+     * @return สตริงรูปแบบ JSON
+     */
     public static String toJson(Object obj) {
         if (obj == null) {
             return "null";
@@ -42,10 +62,18 @@ public class JsonHelper {
             return sb.toString();
         }
 
-        // For POJO objects, use basic reflection or toString fallback
+        // กรณีเป็น Object อื่นๆ ให้เรียก toString() แล้ว escape สตริง
         return "\"" + escape(obj.toString()) + "\"";
     }
 
+    /**
+     * แปลงตัวอักษรพิเศษให้เป็น Escape Sequence ตามมาตรฐาน JSON
+     * เช่น เครื่องหมายคำพูด ("), backslash (\), ขึ้นบรรทัดใหม่ (\n), แท็บ (\t)
+     * รวมทั้งแปลงอักขระพิเศษให้อยู่ในรูป Unicode Escape (รหัสเลขฐานสิบหก 4 หลัก)
+     * 
+     * @param s ข้อความต้นทาง
+     * @return ข้อความที่ผ่านการ Escape แล้ว
+     */
     public static String escape(String s) {
         if (s == null) return "";
         StringBuilder sb = new StringBuilder();

@@ -4,29 +4,84 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
+ * ============================================================================
  * [Lecture 3: OOP Class and Object]
- * [Lecture 4: OOP Concepts - Encapsulation]
- *
- * คลาส Model สำหรับโพสต์ประกาศของหายและแจ้งพบของ (PSRU Lost & Found)
- * ใช้หลักการ Encapsulation โดยตัวแปรทั้งหมดเป็น private และเข้าถึงผ่าน Getter/Setter
+ * [Lecture 4: OOP Concepts - Encapsulation (การห่อหุ้ม)]
+ * ============================================================================
+ * 
+ * คลาส Model สำหรับแทนข้อมูลของประกาศของหายและแจ้งพบของ (PSRU Lost & Found)
+ * 
+ * คุณลักษณะสำคัญ:
+ * 1. ใช้ Encapsulation ควบคุมการเข้าถึงตัวแปรทั้งหมดผ่าน Getter / Setter
+ * 2. รองรับ Method Overloading ในส่วนของ Constructor เพื่อความสะดวกในการสร้างประกาศ
+ * 3. มีเมธอด toMap() สำหรับแปลงข้อมูลเป็น Map เพื่อ serialize เป็น JSON
+ * 
+ * @author CPE Student
+ * @version 1.0
  */
 public class LostFoundItem {
-    private final String id;             // รหัสประกาศ เช่น ITEM-101
-    private String title;                 // หัวข้อประกาศ เช่น กระเป๋าสตางค์สีดำ, iPad Air
-    private String type;                  // ประเภท: "LOST" (ตามหาของหาย) หรือ "FOUND" (แจ้งพบของหาย)
-    private String category;              // หมวดหมู่ เช่น อุปกรณ์อิเล็กทรอนิกส์, เอกสาร/บัตร, กระเป๋า, กุญแจ
-    private String location;              // สถานที่พบหรือจุดที่ทำหาย
-    private String description;           // รายละเอียดเพิ่มเติม
-    private String photoUrl;              // รูปภาพสิ่งของ (Data URL หรือ URL รูปภาพ)
-    private final String reporterId;      // รหัสนักศึกษาของผู้แจ้ง
-    private final String reporterName;    // ชื่อ-นามสกุลของผู้แจ้ง
-    private final String reporterFaculty; // คณะสังกัดของผู้แจ้ง
-    private String reporterIg;            // ช่องทางติดต่อ: Instagram (IG)
-    private String reporterPhoto;         // รูปโปรไฟล์ของผู้แจ้ง (Data URL หรือ Path)
-    private final long createdAt;         // เวลาที่โพสต์ (timestamp)
-    private String status;                // สถานะ: "OPEN" (ยังตามหาอยู่) หรือ "RESOLVED" (ส่งคืนแล้ว)
 
-    // [Lecture 3: Constructor]
+    // --- Attributes ประจำประกาศ (Encapsulation) ---
+
+    /** รหัสประกาศประจำรายการ เช่น ITEM-101 */
+    private final String id;
+
+    /** หัวข้อประกาศ เช่น "กระเป๋าสตางค์สีดำ", "iPad Air 5 สีฟ้า" */
+    private String title;
+
+    /** ประเภทของประกาศ: "LOST" (ตามหาของหาย) หรือ "FOUND" (แจ้งพบของ) */
+    private String type;
+
+    /** หมวดหมู่สิ่งของ เช่น อุปกรณ์อิเล็กทรอนิกส์, เอกสาร/บัตร, กระเป๋า, กุญแจ */
+    private String category;
+
+    /** สถานที่พบหรือจุดที่ทำของหาย เช่น หน้าตึกคณะวิศวะ, โรงอาหารกลาง */
+    private String location;
+
+    /** รายละเอียดเพิ่มเติมเกี่ยวกับสิ่งของ */
+    private String description;
+
+    /** ที่อยู่รูปภาพสิ่งของ (Local Image URL หรือ Data URL) */
+    private String photoUrl;
+
+    /** รหัสนักศึกษาของผู้โพสต์ */
+    private final String reporterId;
+
+    /** ชื่อ-นามสกุลของผู้โพสต์ */
+    private final String reporterName;
+
+    /** คณะสังกัดของผู้โพสต์ */
+    private final String reporterFaculty;
+
+    /** ช่องทางติดต่อ Instagram (IG) ของผู้โพสต์ */
+    private String reporterIg;
+
+    /** รูปภาพโปรไฟล์ส่วนตัวของผู้โพสต์ */
+    private String reporterPhoto;
+
+    /** เวลาที่สร้างประกาศ (Epoch Timestamp มิลลิวินาที) */
+    private final long createdAt;
+
+    /** สถานะของประกาศ: "OPEN" (ยังตามหาอยู่) หรือ "RESOLVED" (ส่งคืน/พบของแล้ว) */
+    private String status;
+
+    /**
+     * [Lecture 3: Constructor เต็มรูปแบบ]
+     * 
+     * @param id รหัสประกาศ
+     * @param title หัวข้อ
+     * @param type ประเภท ("LOST" / "FOUND")
+     * @param category หมวดหมู่
+     * @param location สถานที่
+     * @param description รายละเอียด
+     * @param photoUrl รูปภาพสิ่งของ
+     * @param reporterId รหัสนักศึกษาผู้โพสต์
+     * @param reporterName ชื่อผู้โพสต์
+     * @param reporterFaculty คณะผู้โพสต์
+     * @param reporterIg บัญชี IG
+     * @param reporterPhoto รูปโปรไฟล์ผู้โพสต์
+     * @param status สถานะประกาศ ("OPEN" / "RESOLVED")
+     */
     public LostFoundItem(String id, String title, String type, String category,
                          String location, String description, String photoUrl,
                          String reporterId, String reporterName, String reporterFaculty,
@@ -42,7 +97,7 @@ public class LostFoundItem {
         this.reporterName = reporterName;
         this.reporterFaculty = reporterFaculty;
         
-        // จัดรูปแบบ Instagram ให้มี @ เสมอ
+        // จัดรูปแบบ Instagram ให้ขึ้นต้นด้วย @ เสมอ
         if (reporterIg != null && !reporterIg.trim().isEmpty()) {
             String ig = reporterIg.trim();
             this.reporterIg = ig.startsWith("@") ? ig : "@" + ig;
@@ -55,7 +110,9 @@ public class LostFoundItem {
         this.status = (status != null && !status.trim().isEmpty()) ? status : "OPEN";
     }
 
-    // [Lecture 4: Method Overloading]
+    /**
+     * [Lecture 4: Method Overloading] Constructor แบบไม่ระบุรูปโปรไฟล์
+     */
     public LostFoundItem(String id, String title, String type, String category,
                          String location, String description, String photoUrl,
                          String reporterId, String reporterName, String reporterFaculty,
@@ -64,7 +121,9 @@ public class LostFoundItem {
              reporterId, reporterName, reporterFaculty, reporterIg, "", status);
     }
 
-    // [Lecture 4: Method Overloading]
+    /**
+     * [Lecture 4: Method Overloading] Constructor รับ Object StudentUser โดยตรง
+     */
     public LostFoundItem(String id, String title, String type, String category,
                          String location, String description, String photoUrl,
                          StudentUser user) {
@@ -77,7 +136,10 @@ public class LostFoundItem {
              "OPEN");
     }
 
-    // --- Getter & Setter Methods (Encapsulation) ---
+    // ============================================================================
+    // Getter & Setter Methods (Encapsulation)
+    // ============================================================================
+
     public String getId() {
         return id;
     }
@@ -170,15 +232,25 @@ public class LostFoundItem {
         this.status = status;
     }
 
+    /**
+     * ตรวจสอบว่าประกาศนี้ได้รับการส่งคืน/แก้ไขเรียบร้อยแล้วหรือไม่
+     * @return true ถ้าสถานะเป็น RESOLVED
+     */
     public boolean isResolved() {
         return "RESOLVED".equalsIgnoreCase(this.status);
     }
 
+    /**
+     * เปลี่ยนสถานะประกาศเป็น RESOLVED (ส่งคืนสำเร็จ)
+     */
     public void markResolved() {
         this.status = "RESOLVED";
     }
 
-    // แปลงข้อมูลเป็น Map สำหรับการแปลงเป็น JSON [Lecture 5.2 MVC View]
+    /**
+     * แปลง Object เป็น Map<String, Object> สำหรับ Serialization เป็น JSON ส่งไปหน้า Web
+     * @return Map ของข้อมูลประกาศ
+     */
     public Map<String, Object> toMap() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", id);

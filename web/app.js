@@ -1,3 +1,29 @@
+/**
+ * ============================================================================
+ * [Lecture 5.2: MVC Architectural Pattern - View (ส่วนแสดงผล) & Client Controller]
+ * ============================================================================
+ * 
+ * ไฟล์สคริปต์หลักฝั่งเบราว์เซอร์ (Frontend Client Logic)
+ * ทำหน้าที่เป็น View ในสถาปัตยกรรม MVC และสื่อสารกับ Java Backend ผ่าน REST API
+ * 
+ * หน้าที่หลัก:
+ * 1. รับ-ส่งข้อมูลสถานะจำลองของสมาร์ตโฟน (Polling ทุก 3 วินาที ผ่าน /api/state)
+ * 2. ส่งคำสั่งฮาร์ดแวร์ (Power, Volume, Home, Back) และ App Actions ไปยัง Java Backend (/api/app/action)
+ * 3. ซิงค์ข้อมูลประกาศและผู้ใช้แบบ Real-time เข้าสู่ Firebase Cloud Firestore
+ * 4. เรนเดอร์หน้าจอ UI ต่างๆ:
+ *    - Launcher / Home Screen พร้อมตารางแอป
+ *    - PSRU Lost & Found App (Feed, New Post, Profile, Admin Panel)
+ *    - Settings App (ปรับความสว่าง, รีเฟรชเรท, แบตเตอรี่, การเชื่อมต่อ)
+ *    - Built-in Utility Apps (Phone Dialer, Camera, Calculator, Notes)
+ *    - Live Database Inspection Modal & OOP Architecture Inspector
+ * 
+ * @author CPE Student
+ * @version 1.0
+ */
+
+// ============================================================================
+// [1. รายการแอปพลิเคชันระบบเริ่มต้นที่ติดตั้งในเครื่อง]
+// ============================================================================
 // Default System Installed Applications
 const DEFAULT_INSTALLED_APPS = [
     {
@@ -22,6 +48,9 @@ let currentPhoneState = null;
 let dialBuffer = "";
 let calcBuffer = "0";
 
+// ============================================================================
+// [2. การเริ่มต้นระบบและการดึงข้อมูลสถานะแบบวนรอบ (State Polling)]
+// ============================================================================
 // Start automatic state polling
 document.addEventListener("DOMContentLoaded", () => {
     initFirebase();
@@ -54,6 +83,9 @@ function updateClock() {
 }
 
 // ============================================================================
+// ============================================================================
+// [3. กำหนดสิทธิ์ Super Admin และบทบาทผู้ใช้งาน (RBAC)]
+// ============================================================================
 // SUPER ADMIN IDS CONFIGURATION (รองรับหลาย Admin ทั้งระบบ)
 // ============================================================================
 const SUPER_ADMIN_IDS = ["6812247050", "6812247020"];
@@ -63,6 +95,9 @@ function isUserAdmin(u) {
     return u.role === 'ADMIN' || u.isAdmin === true || SUPER_ADMIN_IDS.includes(String(u.studentId));
 }
 
+// ============================================================================
+// ============================================================================
+// [4. การเชื่อมต่อฐานข้อมูลบนคลาวด์ Firebase Cloud Firestore (Real-time Sync)]
 // ============================================================================
 // FIREBASE CLOUD FIRESTORE INTEGRATION
 // ============================================================================
@@ -1025,6 +1060,9 @@ async function fetchPhoneState() {
 }
 
 // Render Virtual Phone UI
+// ============================================================================
+// [5. การเรนเดอร์หน้าจอโทรศัพท์ (Launcher, Status Bar, App Window)]
+// ============================================================================
 function renderPhoneUI(state) {
     if (!state) return;
 
@@ -1264,6 +1302,9 @@ function renderActiveApp(app) {
 }
 
 // Main PSRU App HTML Renderer
+// ============================================================================
+// [6. การเรนเดอร์แอปพลิเคชัน PSRU Lost & Found (CPE Portal)]
+// ============================================================================
 function renderPsruAppHtml(data) {
     if (data.isLoggedIn && data.currentUser) {
         const user = data.currentUser;
@@ -1355,6 +1396,7 @@ function renderPsruAppHtml(data) {
 }
 
 // 1. FEED TAB: Render Lost & Found Announcements
+// --- แท็บที่ 1: รายการฟีดประกาศของหายและแจ้งพบของ (Feed Tab) ---
 function renderPsruFeedTab(data) {
     const rawItems = (data.items && data.items.length > 0) ? data.items : ((data.posts && data.posts.length > 0) ? data.posts : (simPosts || []));
     const currentUser = data.currentUser || {};
@@ -1554,6 +1596,7 @@ const PSRU_CATEGORIES = [
     "ของใช้ส่วนตัวอื่นๆ"
 ];
 
+// --- แท็บที่ 2: แบบฟอร์มสร้างประกาศใหม่ (New Post Tab) ---
 function renderPsruNewPostTab(data) {
     const user = data.currentUser || {};
     const categoryOptions = PSRU_CATEGORIES.map(cat => {
@@ -1658,6 +1701,7 @@ function renderPsruNewPostTab(data) {
 }
 
 // 3. PROFILE TAB: Render Profile Management & Logout
+// --- แท็บที่ 3: หน้าโปรไฟล์ผู้ใช้และ Admin Panel (Profile / Admin Tab) ---
 function renderPsruProfileTab(data) {
     const user = data.currentUser || {};
     const hasPhoto = user.profileImage && user.profileImage.trim().length > 0 && user.profileImage !== 'data:image/jpeg;base64';
@@ -2026,6 +2070,7 @@ async function handleEditInstagramPrompt(currentIg) {
     }
 }
 
+// --- หน้าต่างเข้าสู่ระบบ (Login Screen) ---
 function renderPsruLoginForm() {
     return `
         <div class="portal-form-body">
@@ -2066,6 +2111,7 @@ const PSRU_FACULTIES = [
     "คณะสังคมศาสตร์และการพัฒนาท้องถิ่น"
 ];
 
+// --- หน้าต่างลงทะเบียนสมาชิกใหม่ (Register Screen) ---
 function renderPsruRegisterForm() {
     const facultyOptions = PSRU_FACULTIES.map(f => {
         const isSelected = formDraft.regFaculty === f ? "selected" : "";
@@ -2254,6 +2300,9 @@ async function handlePsruLogout() {
 }
 
 // HTML Generator for Settings App
+// ============================================================================
+// [7. การเรนเดอร์แอปการตั้งค่าระบบ (Settings App)]
+// ============================================================================
 function renderSettingsAppHtml(data) {
     return `
         <div style="display:flex; flex-direction:column; gap:10px;">
@@ -2342,6 +2391,9 @@ async function clearNotifications() {
 }
 
 // Render OOP Inspector & Heap Data
+// ============================================================================
+// [8. แผงตรวจสอบสถาปัตยกรรม OOP และสถานะอ็อบเจกต์ใน RAM (OOP Live Inspector)]
+// ============================================================================
 function renderInspector(state) {
     if (!state) return;
 
@@ -2712,6 +2764,9 @@ function closeDatabaseModal(e) {
     if (overlay) overlay.classList.remove("active");
 }
 
+// ============================================================================
+// [9. การแสดงผลหน้าต่างโมดอลดูฐานข้อมูลสดใน Java Heap (Live Database Modal)]
+// ============================================================================
 function switchDbTab(tab) {
     currentDbTab = tab;
     document.querySelectorAll(".db-tab-btn").forEach(btn => btn.classList.remove("active"));
@@ -2926,6 +2981,9 @@ function renderDatabaseTabContent() {
 // ============================================================================
 
 // 1. DIALER APP
+// ============================================================================
+// [10. แอปพลิเคชันจำลองเสริม: โทรศัพท์ (Phone Dialer)]
+// ============================================================================
 function renderDialerAppHtml() {
     return `
         <div class="dialer-screen">
@@ -2991,6 +3049,9 @@ function executeDialCall() {
 let currentCameraSubject = "🎒";
 const cameraSubjects = ["🎒", "📱", "💳", "🔑", "🎧", "💻", "⌚"];
 
+// ============================================================================
+// [11. แอปพลิเคชันจำลองเสริม: กล้องถ่ายรูป (Camera App)]
+// ============================================================================
 function renderCameraAppHtml() {
     return `
         <div style="display:flex; flex-direction:column; height:100%; justify-content:space-between;">
@@ -3042,6 +3103,9 @@ function takeCameraSnapshot() {
 }
 
 // 3. CALCULATOR APP
+// ============================================================================
+// [12. แอปพลิเคชันจำลองเสริม: เครื่องคิดเลข (Calculator App)]
+// ============================================================================
 function renderCalcAppHtml() {
     return `
         <div style="display:flex; flex-direction:column; height:100%;">
@@ -3106,6 +3170,9 @@ function pressCalcKey(key) {
 }
 
 // 4. NOTES APP
+// ============================================================================
+// [13. แอปพลิเคชันจำลองเสริม: สมุดบันทึก (Notes App)]
+// ============================================================================
 function renderNotesAppHtml() {
     const savedNotes = JSON.parse(localStorage.getItem("psru_notes") || "[]");
     return `

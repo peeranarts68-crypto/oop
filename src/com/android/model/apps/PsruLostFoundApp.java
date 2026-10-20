@@ -16,39 +16,97 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * [Lecture 4: Inheritance & Polymorphism]
- *
- * แอปพลิเคชัน PSRU Lost and Found / CPE Portal
- * จัดการข้อมูลฟีดประกาศตามหาของหายและแจ้งพบของ โดยเก็บเฉพาะข้อมูลจริงที่ผู้ใช้งานโพสต์เข้ามาเท่านั้น
- * ไม่มีการสร้างข้อมูลสุ่มหรือ mock seed data ขึ้นมาเอง
+ * ============================================================================
+ * [Lecture 4: OOP Concepts - Inheritance & Polymorphism]
+ * [Lecture 5.2: MVC Pattern - Application Business Logic]
+ * ============================================================================
+ * 
+ * แอปพลิเคชัน PSRU Lost and Found / CPE Student Portal
+ * - สืบทอด (Inheritance) มาจากคลาสแม่ AndroidApplication
+ * - จัดการข้อมูลฟีดประกาศตามหาของหายและแจ้งพบของ โดยเก็บข้อมูลจริงที่ผู้ใช้งานบันทึกไว้ใน DataStorage
+ * - รองรับระบบ Login, Register, Profile, Post CRUD, และ Admin Panel
+ * - นำเสนอ Polymorphism ผ่านการ Override เมธอด executeAction() เพื่อจัดการคำสั่งต่างๆ
+ * 
+ * @author CPE Student
+ * @version 1.0
  */
 public class PsruLostFoundApp extends AndroidApplication {
+
+    /** อ้างอิงสมาร์ตโฟนที่เป็นโฮสต์ของแอปพลิเคชัน */
     private final AndroidPhone phone;
+
+    /** คอนโทรลเลอร์ควบคุมการตรวจสอบสิทธิ์และบัญชีผู้ใช้งาน */
     private final AuthController authController;
+
+    /** 
+     * รายการจัดเก็บประกาศของหายและแจ้งพบของ
+     * ใช้ CopyOnWriteArrayList เพื่อความปลอดภัยในการเข้าถึงพร้อมกันแบบ Multithread (Thread-Safe)
+     */
     private final List<LostFoundItem> itemList;
+
+    /** ตัวนับรหัสประกาศแบบ Thread-Safe สำหรับสร้าง ID ใหม่ เช่น ITEM-101, ITEM-102 */
     private final AtomicInteger itemCounter;
 
+    /**
+     * [Lecture 3: Constructor]
+     * ตัวสร้างแอปพลิเคชันโดยใช้ AuthController ตัวใหม่
+     * @param phone สมาร์ตโฟนเครื่องที่ติดตั้งแอป
+     */
     public PsruLostFoundApp(AndroidPhone phone) {
         this(phone, new AuthController());
     }
 
+    /**
+     * [Lecture 4: Method Overloading]
+     * ตัวสร้างแอปพลิเคชันโดยระบุ AuthController ร่วม
+     * @param phone สมาร์ตโฟนเครื่องที่ติดตั้งแอป
+     * @param authController คอนโทรลเลอร์ยืนยันตัวตน
+     */
     public PsruLostFoundApp(AndroidPhone phone, AuthController authController) {
         super("com.psru.lostfound", "PSRU Lost and Found", "psru", "1.0.0", 38);
         this.phone = phone;
         this.authController = authController;
         
-        // โหลดเฉพาะประกาศจริงที่ผู้ใช้งานบันทึกไว้ (ไม่มีการสร้างข้อมูลมั่ว)
+        // โหลดข้อมูลประกาศจริงจาก Persistent Storage (data/posts.dat)
         this.itemList = new CopyOnWriteArrayList<>(DataStorage.loadPosts());
         this.itemCounter = new AtomicInteger(itemList.size() + 100);
     }
 
+    /**
+     * [Lecture 4: Polymorphism - Dynamic Method Dispatch]
+     * จัดการคำสั่งการกระทำต่างๆ ที่ส่งมาจากผู้ใช้ผ่านหน้าจอ UI
+     * 
+     * รายการ Action ที่รองรับ:
+     * 1. LOGIN : ตรวจสอบรหัสนักศึกษาและรหัสผ่าน
+     * 2. RESTORE_SESSION : คืนค่าเซสชันการเข้าสู่ระบบ
+     * 3. REGISTER : ลงทะเบียนสมาชิกใหม่
+     * 4. UPDATE_PROFILE : อัปเดตข้อมูล IG และรูปภาพโปรไฟล์
+     * 5. CREATE_POST : สร้างประกาศของหายหรือแจ้งพบของใหม่
+     * 6. DELETE_POST : ลบประกาศ (สำหรับเจ้าของโพสต์หรือ Admin)
+     * 7. RESOLVE_POST : ปรับสถานะเป็นส่งคืนแล้ว (Resolved)
+     * 8. ADMIN_DELETE_USER : ลบบัญชีผู้ใช้งานโดย Admin
+     * 9. ADMIN_RESET_PASSWORD : รีเซ็ตรหัสผ่านผู้ใช้งานโดย Admin
+     * 10. ADMIN_BROADCAST : ส่งประกาศด่วนแจ้งเตือนแบบพุช
+     * 11. ADMIN_PIN_POST : ปักหมุดประกาศสำคัญขึ้นบนสุด
+     * 12. ADMIN_CLEAR_RESOLVED : ล้างประกาศที่ส่งคืนเรียบร้อยแล้ว
+     * 13. LOGOUT : ออกจากระบบ
+     * 
+     * @param action ชื่อคำสั่งที่ต้องการให้แอปทำงาน
+     * @param params แผนที่พารามิเตอร์ของคำสั่ง (Map<String, Object>)
+     * @return ผลลัพธ์ ActionResult ที่ประกอบด้วย success, message, และ data
+     */
     @Override
     public ActionResult executeAction(String action, Map<String, Object> params) {
+
+        // -------------------------------------------------------------
+        // 1. คำสั่งเข้าสู่ระบบ (LOGIN)
+        // -------------------------------------------------------------
         if ("LOGIN".equalsIgnoreCase(action)) {
             String studentId = params != null && params.containsKey("studentId") ? String.valueOf(params.get("studentId")) : "";
             String password = params != null && params.containsKey("password") ? String.valueOf(params.get("password")) : "";
             ActionResult result = authController.login(studentId, password);
             if (result.isSuccess() && authController.getCurrentUser() != null) {
+                // ส่ง Notification แจ้งเตือนเข้าแถบ Notification Bar ของ Android
                 phone.getOs().getNotificationManager().postNotification(
                     "PSRU Lost & Found",
                     "ยินดีต้อนรับเข้าสู่ระบบ " + authController.getCurrentUser().getFullName(),
@@ -57,6 +115,9 @@ public class PsruLostFoundApp extends AndroidApplication {
             }
             return result;
 
+        // -------------------------------------------------------------
+        // 2. คำสั่งคืนค่าเซสชันผู้ใช้ (RESTORE_SESSION)
+        // -------------------------------------------------------------
         } else if ("RESTORE_SESSION".equalsIgnoreCase(action)) {
             String studentId = params != null && params.containsKey("studentId") ? String.valueOf(params.get("studentId")) : "";
             StudentUser user = authController.getUser(studentId);
@@ -66,6 +127,9 @@ public class PsruLostFoundApp extends AndroidApplication {
             }
             return new ActionResult(false, "ไม่พบบัญชีผู้ใช้", null);
 
+        // -------------------------------------------------------------
+        // 3. คำสั่งลงทะเบียนสมาชิกใหม่ (REGISTER)
+        // -------------------------------------------------------------
         } else if ("REGISTER".equalsIgnoreCase(action)) {
             String studentId = params != null && params.containsKey("studentId") ? String.valueOf(params.get("studentId")) : "";
             String fullName = params != null && params.containsKey("fullName") ? String.valueOf(params.get("fullName")) : "";
@@ -92,11 +156,17 @@ public class PsruLostFoundApp extends AndroidApplication {
             }
             return result;
 
+        // -------------------------------------------------------------
+        // 4. คำสั่งอัปเดตข้อมูลโปรไฟล์ (UPDATE_PROFILE)
+        // -------------------------------------------------------------
         } else if ("UPDATE_PROFILE".equalsIgnoreCase(action)) {
             String instagram = params != null && params.containsKey("instagram") ? String.valueOf(params.get("instagram")) : "";
             String profileImage = params != null && params.containsKey("profileImage") ? String.valueOf(params.get("profileImage")) : "";
             return authController.updateProfile(instagram, profileImage);
 
+        // -------------------------------------------------------------
+        // 5. คำสั่งสร้างประกาศใหม่ (CREATE_POST / ADD_ITEM)
+        // -------------------------------------------------------------
         } else if ("CREATE_POST".equalsIgnoreCase(action) || "ADD_ITEM".equalsIgnoreCase(action)) {
             // ต้องเข้าสู่ระบบก่อนจึงจะโพสต์ได้
             if (!authController.isLoggedIn() || authController.getCurrentUser() == null) {
@@ -135,13 +205,13 @@ public class PsruLostFoundApp extends AndroidApplication {
                 "OPEN"
             );
 
-            // โพสต์ใหม่ให้อยู่ด้านบนสุด (index 0)
+            // วางประกาศใหม่ไว้บนสุดของฟีด (Index 0)
             itemList.add(0, newItem);
 
-            // บันทึกลง Persistent Storage จริง
+            // บันทึกการเปลี่ยนแปลงลงฐานข้อมูลไฟล์จริง (data/posts.dat)
             DataStorage.savePosts(itemList);
 
-            // [Lecture 5.1: Event-driven] ส่ง Notification เข้าสู่ NotificationManager ของมือถือ
+            // [Lecture 5.1: Event-driven] ส่ง Notification เข้าแถบแจ้งเตือนของสมาร์ตโฟน
             String typeLabel = "LOST".equalsIgnoreCase(type) ? "ตามหาของหาย: " : "แจ้งพบของ: ";
             phone.getOs().getNotificationManager().postNotification(
                 "โพสต์ประกาศใหม่",
@@ -151,6 +221,9 @@ public class PsruLostFoundApp extends AndroidApplication {
 
             return new ActionResult(true, "โพสต์ประกาศสำเร็จเรียบร้อยแล้ว", newItem.toMap());
 
+        // -------------------------------------------------------------
+        // 6. คำสั่งลบประกาศ (DELETE_POST)
+        // -------------------------------------------------------------
         } else if ("DELETE_POST".equalsIgnoreCase(action) || "DELETE_ITEM".equalsIgnoreCase(action)) {
             String itemId = params != null && params.containsKey("itemId") ? String.valueOf(params.get("itemId")) : "";
             if (itemId.isEmpty()) {
@@ -160,7 +233,7 @@ public class PsruLostFoundApp extends AndroidApplication {
             StudentUser curUser = authController.getCurrentUser();
             boolean removed = itemList.removeIf(item -> {
                 if (item.getId().equalsIgnoreCase(itemId)) {
-                    // อนุญาตถ้าเป็นเจ้าของโพสต์ หรือเป็น Admin
+                    // อนุญาตให้ลบได้เฉพาะเจ้าของโพสต์ หรือผู้ใช้งานที่มีสิทธิ์ Admin
                     return curUser != null && (curUser.isAdmin() || curUser.getStudentId().equals(item.getReporterId()));
                 }
                 return false;
@@ -172,6 +245,9 @@ public class PsruLostFoundApp extends AndroidApplication {
                 return new ActionResult(false, "ไม่พบประกาศหรือไม่มีสิทธิ์ลบประกาศนี้", null);
             }
 
+        // -------------------------------------------------------------
+        // 7. คำสั่งเปลี่ยนสถานะเป็นส่งคืนแล้ว (RESOLVE_POST)
+        // -------------------------------------------------------------
         } else if ("RESOLVE_POST".equalsIgnoreCase(action)) {
             String itemId = params != null && params.containsKey("itemId") ? String.valueOf(params.get("itemId")) : "";
             StudentUser curUser = authController.getCurrentUser();
@@ -188,15 +264,24 @@ public class PsruLostFoundApp extends AndroidApplication {
             }
             return new ActionResult(false, "ไม่พบประกาศ", null);
 
+        // -------------------------------------------------------------
+        // 8. การจัดการโดย Admin: ลบบัญชีผู้ใช้ (ADMIN_DELETE_USER)
+        // -------------------------------------------------------------
         } else if ("ADMIN_DELETE_USER".equalsIgnoreCase(action)) {
             String targetId = params != null && params.containsKey("studentId") ? String.valueOf(params.get("studentId")) : "";
             return authController.adminDeleteUser(targetId, authController.getCurrentUser());
 
+        // -------------------------------------------------------------
+        // 9. การจัดการโดย Admin: รีเซ็ตรหัสผ่านผู้ใช้ (ADMIN_RESET_PASSWORD)
+        // -------------------------------------------------------------
         } else if ("ADMIN_RESET_PASSWORD".equalsIgnoreCase(action)) {
             String targetId = params != null && params.containsKey("studentId") ? String.valueOf(params.get("studentId")) : "";
             String newPwd = params != null && params.containsKey("newPassword") ? String.valueOf(params.get("newPassword")) : "123456";
             return authController.adminResetPassword(targetId, newPwd, authController.getCurrentUser());
 
+        // -------------------------------------------------------------
+        // 10. การจัดการโดย Admin: ส่งประกาศด่วนทั้งระบบ (ADMIN_BROADCAST)
+        // -------------------------------------------------------------
         } else if ("ADMIN_BROADCAST".equalsIgnoreCase(action)) {
             StudentUser curUser = authController.getCurrentUser();
             if (curUser == null || !curUser.isAdmin()) {
@@ -221,6 +306,9 @@ public class PsruLostFoundApp extends AndroidApplication {
             bcData.put("createdAt", System.currentTimeMillis());
             return new ActionResult(true, "ส่งประกาศด่วนขึ้นระบบสำเร็จ", bcData);
 
+        // -------------------------------------------------------------
+        // 11. การจัดการโดย Admin: ลบประกาศด่วน (ADMIN_DELETE_BROADCAST)
+        // -------------------------------------------------------------
         } else if ("ADMIN_DELETE_BROADCAST".equalsIgnoreCase(action)) {
             StudentUser curUser = authController.getCurrentUser();
             if (curUser == null || !curUser.isAdmin()) {
@@ -228,6 +316,9 @@ public class PsruLostFoundApp extends AndroidApplication {
             }
             return new ActionResult(true, "ลบประกาศด่วนเรียบร้อยแล้ว", null);
 
+        // -------------------------------------------------------------
+        // 12. การจัดการโดย Admin: ปักหมุดประกาศขึ้นบนสุด (ADMIN_PIN_POST)
+        // -------------------------------------------------------------
         } else if ("ADMIN_PIN_POST".equalsIgnoreCase(action)) {
             StudentUser curUser = authController.getCurrentUser();
             if (curUser == null || !curUser.isAdmin()) {
@@ -249,6 +340,9 @@ public class PsruLostFoundApp extends AndroidApplication {
             }
             return new ActionResult(false, "ไม่พบประกาศ", null);
 
+        // -------------------------------------------------------------
+        // 13. การจัดการโดย Admin: ล้างประกาศที่ส่งคืนแล้วทั้งหมด (ADMIN_CLEAR_RESOLVED)
+        // -------------------------------------------------------------
         } else if ("ADMIN_CLEAR_RESOLVED".equalsIgnoreCase(action)) {
             StudentUser curUser = authController.getCurrentUser();
             if (curUser == null || !curUser.isAdmin()) {
@@ -260,6 +354,9 @@ public class PsruLostFoundApp extends AndroidApplication {
             DataStorage.savePosts(itemList);
             return new ActionResult(true, "ล้างประกาศที่ส่งคืนแล้วจำนวน " + cleared + " รายการ", null);
 
+        // -------------------------------------------------------------
+        // 14. คำสั่งออกจากระบบ (LOGOUT)
+        // -------------------------------------------------------------
         } else if ("LOGOUT".equalsIgnoreCase(action)) {
             return authController.logout();
         }
@@ -267,6 +364,12 @@ public class PsruLostFoundApp extends AndroidApplication {
         return new ActionResult(false, "Unknown action: " + action, null);
     }
 
+    /**
+     * คืนค่าข้อมูลสถานะของแอปพลิเคชันเพื่อส่งต่อไปแสดงผลบน Web View
+     * รวมถึงรายชื่อผู้ใช้ทั้งหมด (กรณีแอดมิน), รายการโพสต์ทั้งหมด, และสถิติต่างๆ
+     * 
+     * @return Map โครงสร้างข้อมูลแอปพลิเคชัน
+     */
     @Override
     public Object getAppData() {
         Map<String, Object> data = new HashMap<>();
@@ -278,7 +381,7 @@ public class PsruLostFoundApp extends AndroidApplication {
             Map<String, Object> u = user.toMap();
             data.put("currentUser", u);
 
-            // หากเป็นแอดมิน ให้ส่งข้อมูลรายชื่อผู้ใช้งานทั้งหมดเพื่อจัดการใน Admin Panel
+            // หากเป็นแอดมิน ให้ส่งข้อมูลรายชื่อผู้ใช้งานทั้งหมดเพื่อนำไปจัดการใน Admin Panel
             if (user.isAdmin()) {
                 List<Map<String, Object>> allUsersList = new ArrayList<>();
                 for (StudentUser su : authController.getAllUsers()) {
@@ -291,7 +394,7 @@ public class PsruLostFoundApp extends AndroidApplication {
         }
         data.put("totalUsers", authController.getUserCount());
 
-        // ข้อมูลรายการประกาศของหายและแจ้งพบของที่สร้างโดย user เท่านั้น
+        // จัดเตรียมข้อมูลรายการประกาศและสถิติ
         List<Map<String, Object>> items = new ArrayList<>();
         int lostCount = 0;
         int foundCount = 0;
@@ -315,10 +418,18 @@ public class PsruLostFoundApp extends AndroidApplication {
         return data;
     }
 
+    /**
+     * อ่านคอนโทรลเลอร์ตรวจสอบสิทธิ์
+     * @return AuthController
+     */
     public AuthController getAuthController() {
         return authController;
     }
 
+    /**
+     * อ่านรายการประกาศทั้งหมด (แบบ Read-Only Unmodifiable List)
+     * @return List ของ LostFoundItem
+     */
     public List<LostFoundItem> getItemList() {
         return Collections.unmodifiableList(itemList);
     }

@@ -27,17 +27,48 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * ============================================================================
  * [Lecture 5.2: MVC Architectural Pattern - View & Dispatcher]
- *
- * เว็บเซิร์ฟเวอร์เชื่อมต่อหน้าจอ UI บน Browser กับระบบ PhoneController ในภาษา Java
+ * ============================================================================
+ * 
+ * คลาส AndroidHttpServer ทำหน้าที่เป็น HTTP Web Server ในภาษา Java (ใช้ com.sun.net.httpserver)
+ * เชื่อมโยงหน้าจอเว็บ (View: HTML/CSS/JS) เข้ากับคอนโทรลเลอร์ (Controller: PhoneController, AuthController)
+ * และโมเดลของระบบ (Model: AndroidPhone, Hardware, Apps)
+ * 
+ * หน้าที่หลัก:
+ * 1. ให้บริการ REST API สำหรับส่งคำสั่งควบคุมฮาร์ดแวร์และแอปพลิเคชัน (/api/*)
+ * 2. ส่งข้อมูลสถานะจำลองของโทรศัพท์และ OOP Metadata ให้ UI ไปแสดงผล (/api/state)
+ * 3. ส่งข้อมูลตารางฐานข้อมูลสดใน Java Heap Memory (/api/database)
+ * 4. ให้บริการไฟล์เว็บแบบ Static File Server (HTML, CSS, JS, รูปภาพใน uploads)
+ * 
+ * @author CPE Student
+ * @version 1.0
  */
 public class AndroidHttpServer {
+
+    /** พอร์ตที่เซิร์ฟเวอร์เปิดให้บริการ เช่น 8088 */
     private final int port;
+
+    /** คอนโทรลเลอร์ควบคุมโทรศัพท์ */
     private final PhoneController phoneController;
+
+    /** โมเดลสมาร์ตโฟน */
     private final AndroidPhone phone;
+
+    /** ไดเรกทอรีที่เก็บไฟล์เว็บ (โฟลเดอร์ web/) */
     private final File webRootDir;
+
+    /** อ็อบเจกต์ HttpServer ของ Java Built-in */
     private HttpServer server;
 
+    /**
+     * [Lecture 3: Constructor]
+     * ตัวสร้าง AndroidHttpServer
+     * 
+     * @param port หมายเลขพอร์ต
+     * @param phoneController คอนโทรลเลอร์โทรศัพท์
+     * @param webRootDir โฟลเดอร์เก็บไฟล์เว็บ
+     */
     public AndroidHttpServer(int port, PhoneController phoneController, File webRootDir) {
         this.port = port;
         this.phoneController = phoneController;
@@ -45,55 +76,91 @@ public class AndroidHttpServer {
         this.webRootDir = webRootDir;
     }
 
+    /**
+     * สั่งเริ่มต้นทำงานของเว็บเซิร์ฟเวอร์ และลงทะเบียน URL Contexts ต่างๆ
+     * @throws IOException หากเกิดข้อผิดพลาดในการผูก Socket กับพอร์ต
+     */
     public void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress(port), 0);
 
-        // API Endpoints ส่งคำสั่งไปยัง Controller
+        // ============================================================================
+        // REST API Endpoints สำหรับเชื่อมต่อไปยัง PhoneController
+        // ============================================================================
+
+        // 1. อ่านสถานะปัจจุบันของโทรศัพท์ทั้งหมด (Hardware, OS, Battery, Display, Apps)
         server.createContext("/api/state", this::handleGetState);
+
+        // 2. ควบคุมปุ่มฮาร์ดแวร์ Power (เปิด/ปิดเครื่อง)
         server.createContext("/api/power", exchange -> {
             phoneController.togglePower();
             sendJsonResponse(exchange, 200, Map.of("success", true, "isPoweredOn", phone.isPoweredOn()));
         });
+
+        // 3. ควบคุมปุ่มฮาร์ดแวร์เร่งเสียง (Volume Up)
         server.createContext("/api/volume/up", exchange -> {
             phoneController.volumeUp();
             sendJsonResponse(exchange, 200, Map.of("success", true, "volume", phone.getVolume()));
         });
+
+        // 4. ควบคุมปุ่มฮาร์ดแวร์ลดเสียง (Volume Down)
         server.createContext("/api/volume/down", exchange -> {
             phoneController.volumeDown();
             sendJsonResponse(exchange, 200, Map.of("success", true, "volume", phone.getVolume()));
         });
+
+        // 5. ชาร์จแบตเตอรี่โทรศัพท์
         server.createContext("/api/battery/charge", exchange -> {
             sendJsonResponse(exchange, 200, Map.of("success", true, "level", 100));
         });
+
+        // 6. กดปุ่มนำทาง Home
         server.createContext("/api/home", exchange -> {
             phoneController.pressHome();
             sendJsonResponse(exchange, 200, Map.of("success", true));
         });
+
+        // 7. กดปุ่มนำทาง Back
         server.createContext("/api/back", exchange -> {
             phoneController.pressBack();
             sendJsonResponse(exchange, 200, Map.of("success", true));
         });
+
+        // 8. สั่งเปิดแอปพลิเคชัน
         server.createContext("/api/app/launch", this::handleLaunchApp);
+
+        // 9. สั่งปิดแอปพลิเคชัน
         server.createContext("/api/app/close", exchange -> {
             phoneController.closeCurrentApp();
             sendJsonResponse(exchange, 200, Map.of("success", true));
         });
+
+        // 10. ส่งคำสั่ง (Action) ไปยังแอปพลิเคชันที่กำลังเปิดอยู่
         server.createContext("/api/app/action", this::handleAppAction);
+
+        // 11. อ่านข้อมูลสดของ In-Memory Database ใน Java Heap
         server.createContext("/api/database", this::handleGetDatabase);
 
-        // ให้บริการไฟล์ Static Web (HTML, CSS, JS, Images)
+        // ============================================================================
+        // Static File Handler: ให้บริการไฟล์ HTML, CSS, JS และรูปภาพใน web/
+        // ============================================================================
         server.createContext("/", this::handleStaticFile);
 
-        server.setExecutor(null);
+        server.setExecutor(null); // ใช้ Default Executor
         server.start();
     }
 
+    /**
+     * สั่งหยุดการทำงานของเซิร์ฟเวอร์
+     */
     public void stop() {
         if (server != null) {
             server.stop(0);
         }
     }
 
+    /**
+     * จัดการคำขอ GET /api/state รวบรวมสถานะของฮาร์ดแวร์และซอฟต์แวร์ทั้งหมด
+     */
     private void handleGetState(HttpExchange exchange) throws IOException {
         if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
             sendJsonResponse(exchange, 405, Map.of("error", "Method not allowed"));
@@ -102,7 +169,7 @@ public class AndroidHttpServer {
 
         Map<String, Object> state = new LinkedHashMap<>();
 
-        // Device
+        // ข้อมูลตัวเครื่อง (Device)
         Map<String, Object> device = new LinkedHashMap<>();
         device.put("brand", phone.getBrand());
         device.put("model", phone.getModel());
@@ -112,7 +179,7 @@ public class AndroidHttpServer {
         device.put("volume", phone.getVolume());
         state.put("device", device);
 
-        // Battery
+        // ข้อมูลแบตเตอรี่ (Battery)
         Map<String, Object> battery = new LinkedHashMap<>();
         battery.put("level", 100);
         battery.put("capacityMah", phone.getBattery().getCapacityMah());
@@ -122,7 +189,7 @@ public class AndroidHttpServer {
         battery.put("isInfinite", true);
         state.put("battery", battery);
 
-        // Display
+        // ข้อมูลจอแสดงผล (Display)
         Map<String, Object> display = new LinkedHashMap<>();
         display.put("resolution", phone.getDisplay().getResolution());
         display.put("diagonalInches", phone.getDisplay().getDiagonalInches());
@@ -131,7 +198,7 @@ public class AndroidHttpServer {
         display.put("refreshRateHz", phone.getDisplay().getRefreshRateHz());
         state.put("display", display);
 
-        // Storage
+        // ข้อมูลหน่วยความจำจัดเก็บ (Storage)
         Map<String, Object> storage = new LinkedHashMap<>();
         storage.put("totalMb", phone.getStorage().getTotalCapacityMb());
         storage.put("usedMb", phone.getStorage().getUsedCapacityMb());
@@ -149,7 +216,7 @@ public class AndroidHttpServer {
         storage.put("files", filesList);
         state.put("storage", storage);
 
-        // Network
+        // ข้อมูลโมดูลเครือข่าย (Network)
         Map<String, Object> net = new LinkedHashMap<>();
         net.put("isConnected", phone.getNetworkAdapter().isConnected());
         net.put("connectionType", phone.getNetworkAdapter().getConnectionType());
@@ -158,7 +225,7 @@ public class AndroidHttpServer {
         net.put("cellularEnabled", phone.getNetworkAdapter().isCellularEnabled());
         state.put("network", net);
 
-        // OS
+        // ข้อมูลระบบปฏิบัติการ (Android OS)
         Map<String, Object> osMap = new LinkedHashMap<>();
         osMap.put("versionName", phone.getOs().getVersionName());
         osMap.put("apiLevel", phone.getOs().getApiLevel());
@@ -166,7 +233,7 @@ public class AndroidHttpServer {
         osMap.put("uptimeSeconds", phone.getOs().getUptimeSeconds());
         state.put("os", osMap);
 
-        // Notifications
+        // ข้อมูลการแจ้งเตือน (Notifications)
         List<Map<String, Object>> notifs = new ArrayList<>();
         for (Notification n : phone.getOs().getNotificationManager().getActiveNotifications()) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -179,7 +246,7 @@ public class AndroidHttpServer {
         }
         state.put("notifications", notifs);
 
-        // Installed Apps
+        // รายการแอปที่ติดตั้ง (Installed Apps)
         List<Map<String, Object>> appList = new ArrayList<>();
         for (AndroidApplication app : phone.getInstalledApps().values()) {
             appList.add(Map.of(
@@ -193,7 +260,7 @@ public class AndroidHttpServer {
         }
         state.put("installedApps", appList);
 
-        // Running App
+        // แอปที่กำลังเปิดใช้งานอยู่ (Foreground Running App)
         AndroidApplication cur = phone.getCurrentRunningApp();
         if (cur != null) {
             Map<String, Object> running = new LinkedHashMap<>();
@@ -207,7 +274,7 @@ public class AndroidHttpServer {
             state.put("runningApp", null);
         }
 
-        // OOP Info
+        // ข้อมูลสรุปหลักการ OOP ที่เชื่อมโยงกับบทเรียน
         Map<String, String> oopInfo = new LinkedHashMap<>();
         oopInfo.put("lecture3", "Classes & Objects: Battery, Display, StudentUser");
         oopInfo.put("lecture4", "OOP 4 Pillars: Abstraction (Device), Inheritance (SmartPhone), Polymorphism (AndroidPhone), Encapsulation");
@@ -219,6 +286,9 @@ public class AndroidHttpServer {
         sendJsonResponse(exchange, 200, state);
     }
 
+    /**
+     * จัดการคำขอเปิดแอปพลิเคชัน POST /api/app/launch
+     */
     private void handleLaunchApp(HttpExchange exchange) throws IOException {
         Map<String, String> body = parseRequestBody(exchange);
         String appId = body.get("appId");
@@ -230,6 +300,10 @@ public class AndroidHttpServer {
         sendJsonResponse(exchange, 200, Map.of("success", ok, "appId", appId));
     }
 
+    /**
+     * จัดการคำขอส่งการกระทำไปยังแอปพลิเคชัน POST /api/app/action
+     * รวมถึงบันทึกรูปภาพ Base64 เป็นไฟล์ลงโฟลเดอร์ uploads
+     */
     private void handleAppAction(HttpExchange exchange) throws IOException {
         Map<String, String> body = parseRequestBody(exchange);
         String action = body.get("action");
@@ -239,7 +313,7 @@ public class AndroidHttpServer {
         }
         Map<String, Object> params = new HashMap<>(body);
 
-        // จัดการบันทึกรูปภาพ Base64 ลงเป็นไฟล์จริงใน web/uploads
+        // จัดการบันทึกรูปภาพ Base64 ของโปรไฟล์ผู้ใช้ลงดิสก์
         if (params.containsKey("profileImage")) {
             String rawImg = String.valueOf(params.get("profileImage"));
             if (rawImg.startsWith("data:image/")) {
@@ -252,6 +326,7 @@ public class AndroidHttpServer {
             }
         }
 
+        // จัดการบันทึกรูปภาพ Base64 ของประกาศสิ่งของลงดิสก์
         if (params.containsKey("photoUrl")) {
             String rawImg = String.valueOf(params.get("photoUrl"));
             if (rawImg.startsWith("data:image/")) {
@@ -263,6 +338,7 @@ public class AndroidHttpServer {
             }
         }
 
+        // ส่ง Action ไปยังแอปผ่าน AndroidPhone
         AndroidApplication.ActionResult result = phone.executeAppAction(action, params);
         sendJsonResponse(exchange, 200, Map.of(
             "success", result.isSuccess(),
@@ -271,6 +347,9 @@ public class AndroidHttpServer {
         ));
     }
 
+    /**
+     * ให้บริการไฟล์ Static สำหรับหน้าเว็บ (HTML, CSS, JS, Images)
+     */
     private void handleStaticFile(HttpExchange exchange) throws IOException {
         String path = exchange.getRequestURI().getPath();
         if (path.equals("/") || path.isEmpty()) {
@@ -300,6 +379,9 @@ public class AndroidHttpServer {
         }
     }
 
+    /**
+     * คืนค่า MIME Type ตามนามสกุลไฟล์
+     */
     private String getMimeType(String filename) {
         String lower = filename.toLowerCase();
         if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html; charset=UTF-8";
@@ -314,6 +396,9 @@ public class AndroidHttpServer {
         return "application/octet-stream";
     }
 
+    /**
+     * ส่งคำตอบกลับในรูปแบบ JSON ไปยังไคลเอนต์
+     */
     private void sendJsonResponse(HttpExchange exchange, int status, Object data) throws IOException {
         String json = JsonHelper.toJson(data);
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
@@ -324,6 +409,9 @@ public class AndroidHttpServer {
         }
     }
 
+    /**
+     * แยกวิเคราะห์เนื้อหา Request Body จาก JSON เป็น Map<String, String>
+     */
     private Map<String, String> parseRequestBody(HttpExchange exchange) throws IOException {
         try (InputStream is = exchange.getRequestBody()) {
             String raw = new String(is.readAllBytes(), StandardCharsets.UTF_8);
@@ -331,6 +419,9 @@ public class AndroidHttpServer {
         }
     }
 
+    /**
+     * ตัวแยกวิเคราะห์ JSON แบบง่ายโดยไม่ใช้ไลบรารีภายนอก
+     */
     private Map<String, String> parseSimpleJson(String json) {
         Map<String, String> map = new HashMap<>();
         if (json == null || json.trim().isEmpty()) return map;
@@ -393,6 +484,9 @@ public class AndroidHttpServer {
         return map;
     }
 
+    /**
+     * ปลดเครื่องหมายคำพูดและแปลง Escape Sequence
+     */
     private String unquoteAndUnescape(String s) {
         if (s == null) return "";
         s = s.trim();
@@ -432,6 +526,10 @@ public class AndroidHttpServer {
         return sb.toString();
     }
 
+    /**
+     * ให้บริการข้อมูลสดของฐานข้อมูล In-Memory GET /api/database
+     * สำหรับการตรวจสอบข้อมูลที่บันทึกอยู่ใน Java Heap
+     */
     private void handleGetDatabase(HttpExchange exchange) throws IOException {
         if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
             sendJsonResponse(exchange, 405, Map.of("error", "Method not allowed"));
@@ -440,7 +538,7 @@ public class AndroidHttpServer {
 
         Map<String, Object> db = new LinkedHashMap<>();
 
-        // 1. Users Table (In-Memory Map in AuthController)
+        // 1. ตาราง Users (In-Memory Map ใน AuthController)
         List<Map<String, Object>> usersList = new ArrayList<>();
         AndroidApplication psruApp = phone.getInstalledApps().get("com.psru.lostfound");
         if (psruApp instanceof PsruLostFoundApp lostFoundApp) {
@@ -459,7 +557,7 @@ public class AndroidHttpServer {
         db.put("users", usersList);
         db.put("totalUsers", usersList.size());
 
-        // 2. Lost & Found Items Table (In-Memory List in PsruLostFoundApp)
+        // 2. ตาราง Lost & Found Items (In-Memory List ใน PsruLostFoundApp)
         List<Map<String, Object>> postsList = new ArrayList<>();
         if (psruApp instanceof PsruLostFoundApp lostFoundApp) {
             for (LostFoundItem item : lostFoundApp.getItemList()) {
@@ -469,7 +567,7 @@ public class AndroidHttpServer {
         db.put("posts", postsList);
         db.put("totalPosts", postsList.size());
 
-        // 3. Storage Files Table (Simulated Flash Memory in Storage)
+        // 3. ตาราง Storage Files (Simulated Flash Memory ใน Storage)
         List<Map<String, Object>> storageList = new ArrayList<>();
         for (Storage.StoredFile f : phone.getStorage().getFiles()) {
             storageList.add(Map.of(

@@ -8,29 +8,55 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * [Lecture 5.2: MVC Architectural Pattern - Controller]
- *
- * คลาส Controller ควบคุมการทำงานของโทรศัพท์ (เชื่อมต่อระหว่าง View และ Model)
- * ทำหน้าที่รับคำสั่งจากผู้ใช้ (เช่น กดปุ่ม Power, Volume, Home, Back, เปิดแอป)
- * แล้วสั่งการไปยัง Model (AndroidPhone) พร้อมแจ้งเตือน Event ไปยัง Listener
+ * ============================================================================
+ * [Lecture 5.2: MVC Architectural Pattern - Controller (ส่วนควบคุม)]
+ * ============================================================================
+ * 
+ * คลาส PhoneController ทำหน้าที่เป็น Controller ควบคุมการทำงานของโทรศัพท์
+ * เชื่อมโยงระหว่างมุมมองหน้าจอ (View / Web GUI) กับโมเดลฮาร์ดแวร์ (Model / AndroidPhone)
+ * 
+ * หน้าที่หลักตามหลัก MVC:
+ * 1. รับคำสั่งจากผู้ใช้ (เช่น กดปุ่มเปิดเครื่อง, ปรับระดับเสียง, เปิด-ปิดแอป)
+ * 2. เรียกใช้งานเมธอดใน Model (AndroidPhone) เพื่อเปลี่ยนแปลงสถานะฮาร์ดแวร์
+ * 3. แจ้งเตือนเหตุการณ์ไปยัง PhoneEventListener (Event-Driven Programming [Lecture 5.1])
+ * 4. คืนค่าผลลัพธ์เพื่อนำไปอัปเดตหน้าจอ View ให้สอดคล้องกัน
+ * 
+ * @author CPE Student
+ * @version 1.0
  */
 public class PhoneController {
+
+    /** อ็อบเจกต์ Model โทรศัพท์ที่อยู่ภายใต้การควบคุม */
     private final AndroidPhone phone;
+
+    /** รายชื่อผู้รับฟังเหตุการณ์การทำงานของโทรศัพท์ [Lecture 5.1] */
     private final List<PhoneEventListener> listeners;
 
+    /**
+     * [Lecture 3: Constructor]
+     * ตัวสร้าง PhoneController
+     * @param phone โมเดลโทรศัพท์ AndroidPhone
+     */
     public PhoneController(AndroidPhone phone) {
         this.phone = phone;
         this.listeners = new ArrayList<>();
     }
 
-    // ลงทะเบียน Event Listener [Lecture 5.1]
+    /**
+     * ลงทะเบียนผู้รับฟังเหตุการณ์โทรศัพท์ [Lecture 5.1: Event-driven]
+     * @param listener ผู้รับฟังเหตุการณ์
+     */
     public void addListener(PhoneEventListener listener) {
         if (!listeners.contains(listener)) {
             listeners.add(listener);
         }
     }
 
-    // เมธอดควบคุมการเปิด/ปิดเครื่อง
+    /**
+     * คำสั่งสลับเปิด/ปิดเครื่อง (Power Button)
+     * สั่งการไปยัง Model และกระจาย Event onPowerChanged ไปยัง Listeners
+     * @return สถานะการเปิดเครื่องหลังสั่งการ (true = เปิดอยู่, false = ปิดอยู่)
+     */
     public boolean togglePower() {
         phone.togglePower();
         boolean state = phone.isPoweredOn();
@@ -40,7 +66,10 @@ public class PhoneController {
         return state;
     }
 
-    // เมธอดปรับระดับเสียงขึ้น
+    /**
+     * คำสั่งเร่งเสียงขึ้น 10% (Volume Up Button)
+     * @return ระดับเสียงใหม่หลังปรับ (0 - 100)
+     */
     public int volumeUp() {
         phone.volumeUp();
         int vol = phone.getVolume();
@@ -50,7 +79,10 @@ public class PhoneController {
         return vol;
     }
 
-    // เมธอดปรับระดับเสียงลง
+    /**
+     * คำสั่งลดเสียงลง 10% (Volume Down Button)
+     * @return ระดับเสียงใหม่หลังปรับ (0 - 100)
+     */
     public int volumeDown() {
         phone.volumeDown();
         int vol = phone.getVolume();
@@ -60,7 +92,12 @@ public class PhoneController {
         return vol;
     }
 
-    // เมธอดเปิดแอปพลิเคชัน
+    /**
+     * คำสั่งเปิดแอปพลิเคชัน (Launch App)
+     * สั่งเปิดแอปใน Model และแจ้ง Event onAppLaunched
+     * @param appId รหัสประจำแอป เช่น "com.psru.lostfound"
+     * @return true ถ้าเปิดสำเร็จ
+     */
     public boolean launchApp(String appId) {
         boolean ok = phone.launchApp(appId);
         if (ok) {
@@ -73,7 +110,9 @@ public class PhoneController {
         return ok;
     }
 
-    // เมธอดปิดแอปพลิเคชันปัจจุบัน
+    /**
+     * คำสั่งปิดแอปพลิเคชันปัจจุบันที่กำลังแสดงผลอยู่
+     */
     public void closeCurrentApp() {
         phone.closeCurrentApp();
         for (PhoneEventListener l : listeners) {
@@ -81,17 +120,24 @@ public class PhoneController {
         }
     }
 
-    // เมธอดปุ่ม Home
+    /**
+     * คำสั่งกดปุ่มโฮม (Home Button) กลับสู่หน้าแรก
+     */
     public void pressHome() {
         phone.pressHomeButton();
     }
 
-    // เมธอดปุ่ม Back
+    /**
+     * คำสั่งกดปุ่มย้อนกลับ (Back Button)
+     */
     public void pressBack() {
         phone.pressBackButton();
     }
 
-    // Getter คืนค่า Model สำหรับนำไปแสดงผลใน View
+    /**
+     * อ่านโมเดล AndroidPhone เพื่อนำไปแสดงผลบน View
+     * @return AndroidPhone
+     */
     public AndroidPhone getPhoneModel() {
         return phone;
     }
